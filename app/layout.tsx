@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from 'next'
 import { Analytics } from '@vercel/analytics/next'
 
 import { ViewTransition } from 'react'
+import { GoogleTagManager } from '@next/third-parties/google'
+import { GoogleAnalytics } from '@next/third-parties/google'
 
 import cn from 'clsx'
 import localFont from 'next/font/local'
@@ -48,6 +50,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang='en' className='overflow-x-hidden touch-manipulation'>
+      <GoogleTagManager gtmId={process.env.NEXT_PUBLIC_GTM_ID} />
       <body
         className={cn(
           sans.variable,
@@ -73,6 +76,7 @@ export default function RootLayout({
         </div>
         <Analytics />
       </body>
+      <GoogleAnalytics gaId={process.env.NEXT_PUBLIC_GA_ID} />
     </html>
   )
 }
