@@ -48,27 +48,30 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode
 }>) {
+  const gtmId = process.env.NEXT_PUBLIC_GTM_ID;
+  const gaId = process.env.NEXT_PUBLIC_GA_ID;
+
   return (
-    <html lang='en' className='overflow-x-hidden touch-manipulation'>
-      <GoogleTagManager gtmId={process.env.NEXT_PUBLIC_GTM_ID} />
+    <html lang="en" className="overflow-x-hidden touch-manipulation">
+      {gtmId && <GoogleTagManager gtmId={gtmId} />}
       <body
         className={cn(
           sans.variable,
           serif.variable,
           mono.variable,
-          'w-full p-6 sm:p-10 md:p-14',
-          'text-sm leading-6 sm:text-[15px] sm:leading-7 md:text-base md:leading-7',
-          'text-rurikon-500',
-          'antialiased'
+          "w-full p-6 sm:p-10 md:p-14",
+          "text-sm leading-6 sm:text-[15px] sm:leading-7 md:text-base md:leading-7",
+          "text-rurikon-500",
+          "antialiased",
         )}
       >
-        <div className='fixed sm:hidden h-6 sm:h-10 md:h-14 w-full top-0 left-0 z-30 pointer-events-none content-fade-out' />
-        <div className='flex flex-col mobile:flex-row'>
+        <div className="fixed sm:hidden h-6 sm:h-10 md:h-14 w-full top-0 left-0 z-30 pointer-events-none content-fade-out" />
+        <div className="flex flex-col mobile:flex-row">
           <Navbar />
-          <main className='relative flex-1 contain-[inline-size]'>
-            <div className='absolute w-full h-px opacity-50 bg-rurikon-border right-0 mobile:right-auto mobile:left-0 mobile:w-px mobile:h-full mobile:opacity-100 mix-blend-multiply' />
-            <ViewTransition name='crossfade'>
-              <article className='pl-0 pt-6 mobile:pt-0 mobile:pl-6 sm:pl-10 md:pl-14'>
+          <main className="relative flex-1 contain-[inline-size]">
+            <div className="absolute w-full h-px opacity-50 bg-rurikon-border right-0 mobile:right-auto mobile:left-0 mobile:w-px mobile:h-full mobile:opacity-100 mix-blend-multiply" />
+            <ViewTransition name="crossfade">
+              <article className="pl-0 pt-6 mobile:pt-0 mobile:pl-6 sm:pl-10 md:pl-14">
                 {children}
               </article>
             </ViewTransition>
@@ -76,7 +79,7 @@ export default function RootLayout({
         </div>
         <Analytics />
       </body>
-      <GoogleAnalytics gaId={process.env.NEXT_PUBLIC_GA_ID} />
+      {gaId && <GoogleAnalytics gaId={gaId} />}
     </html>
   )
 }
