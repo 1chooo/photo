@@ -1,14 +1,14 @@
 <div align="center">
   
-<h1>Photopia</h1>
+<h1>Lin Hugo Photo</h1>
 
 Photo Blog by Lin Hugo
 
 <div align="center">
-    <a href="https://p.1chooo.com">
-        <img 
-        alt="Lin Hugo Photo" 
-        src=".github/cover.webp" 
+    <a href="https://photo.1chooo.com">
+        <img
+        alt="Lin Hugo Photo"
+        src=".github/cover.webp"
         />
     </a>
 </div>
