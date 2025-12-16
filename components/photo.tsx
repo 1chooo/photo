@@ -32,7 +32,7 @@ export default function Photo({ image, title, variant = 'original' }: PhotoProps
                       <Image
                         alt={image.alt}
                         className={`object-cover object-center transition-all duration-700 transform scale-100 hover:scale-110 ${
-                          isLoaded ? 'opacity-100' : 'opacity-0'
+                          isLoaded ? 'opacity-100' : 'opacity-20'
                         }`}
                         src={image.src}
                         fill
@@ -49,7 +49,7 @@ export default function Photo({ image, title, variant = 'original' }: PhotoProps
                       <Image
                         alt={image.alt}
                         className={`object-contain object-center w-full h-auto transition-opacity duration-700 ${
-                          isLoaded ? 'opacity-100' : 'opacity-0'
+                          isLoaded ? 'opacity-100' : 'opacity-20'
                         }`}
                         src={image.src}
                         width={image.width || 1200}

@@ -27,7 +27,7 @@ function GalleryItem({ image, index }: GalleryItemProps) {
     <BlurFade delay={0.25 + index * 0.05} inView>
       <Image
         className={`mb-4 w-full object-contain transition-all duration-700 hover:scale-105 ${
-          isLoaded ? 'opacity-100' : 'opacity-0'
+          isLoaded ? 'opacity-100' : 'opacity-20'
         }`}
         src={image.src}
         alt={image.alt}
