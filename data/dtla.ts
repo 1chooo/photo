@@ -1,6 +1,6 @@
 import { GalleryImage } from '@/types/gallery';
 
-export const galleryImages: GalleryImage[] = [
+export const DTLAImages: GalleryImage[] = [
   {
     id: '1',
     src: 'https://img.notionusercontent.com/s3/prod-files-secure%2F7c680e4a-0a3c-464d-bc86-7461288cd2a3%2Fbdf40240-a568-433b-a89c-2de6757e0e92%2FDSC00403.jpg/size/w=1420?exp=1765928351&sig=R-UZSVzrhN0SO59I1Tq32nzZmPYTLVHwnqph-A9wM1Y&id=2ca297c6-83c0-803b-8c08-f8d21f03b798&table=block',

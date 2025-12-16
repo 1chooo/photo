@@ -5,9 +5,14 @@ import cn from 'clsx';
 interface PhotoProps {
   image: GalleryImage;
   title?: React.ReactNode;
+  variant?: 'original' | 'square';
 }
 
-export default function Photo({ image, title }: PhotoProps) {
+export default function Photo({ image, title, variant = 'original' }: PhotoProps) {
+  if (!image) {
+    return null;
+  }
+  
   return (
     <figure>
       <span className="inline-block w-full">
@@ -15,17 +20,32 @@ export default function Photo({ image, title }: PhotoProps) {
           <section>
             <div className="container w-full">
               <div className="w-full p-1">
-                <div className="overflow-hidden h-full w-full">
-                  <div className="block h-full w-full relative aspect-square">
-                    <Image
-                      alt={image.alt}
-                      className="object-cover object-center transition duration-500 transform scale-100 hover:scale-110"
-                      src={image.src}
-                      fill
-                      sizes="100vw"
-                    />
+                {variant === 'square' ? (
+                  <div className="overflow-hidden h-full w-full">
+                    <div className="block h-full w-full relative aspect-square">
+                      <Image
+                        alt={image.alt}
+                        className="object-cover object-center transition duration-500 transform scale-100 hover:scale-110"
+                        src={image.src}
+                        fill
+                        sizes="100vw"
+                      />
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <div className="overflow-hidden w-full">
+                    <div className="block w-full relative">
+                      <Image
+                        alt={image.alt}
+                        className="object-contain object-center w-full h-auto"
+                        src={image.src}
+                        width={image.width || 1200}
+                        height={image.height || 800}
+                        sizes="100vw"
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </section>

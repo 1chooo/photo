@@ -20,6 +20,12 @@ export default withMDX()({
         port: '',
         pathname: '/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'img.notionusercontent.com',
+        port: '',
+        pathname: '/**',
+      },
     ]
   },
 } satisfies NextConfig)

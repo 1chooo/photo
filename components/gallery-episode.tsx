@@ -27,7 +27,7 @@ function GalleryItem({ image }: GalleryItemProps) {
 
 export default function Gallery({ images }: GalleryProps) {
   return (
-    <section className="text-neutral-700">
+    <section>
       <div className="container w-full">
         <div className="flex flex-col w-full">
           {images.map((image, index) => (
