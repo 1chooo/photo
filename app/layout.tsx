@@ -35,6 +35,7 @@ export const metadata: Metadata = {
     template: '%s - Lin Hugo',
     default: 'Lin Hugo',
   },
+  description: "Lin Hugo photo portfolio."
 }
 
 export const viewport: Viewport = {
