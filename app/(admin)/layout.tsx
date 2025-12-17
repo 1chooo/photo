@@ -1,11 +1,12 @@
 'use client'
 
+import { ViewTransition } from 'react'
 import { useEffect } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
-import Link from 'next/link'
 import { signOut } from 'firebase/auth'
 import { auth } from '@/lib/firebase/config'
 import { useAuth } from '@/lib/firebase/useAuth'
+import DashboardNavbar from '@/components/dashboard-navbar'
 
 export default function AdminLayout({
   children,
@@ -57,62 +58,21 @@ export default function AdminLayout({
     return null // Will redirect in useEffect
   }
 
-  // Dashboard layout with sidebar
+  // Dashboard layout with navbar
   return (
-    <div className="min-h-screen flex">
-      {/* Sidebar */}
-      <aside className="w-64  flex flex-col">
-        {/* Logo/Header */}
-        <div className="p-6 border-b border-gray-700">
-          <h1 className="text-2xl font-bold">Admin Panel</h1>
-        </div>
-
-        {/* Navigation */}
-        <nav className="flex-1 p-4 space-y-2">
-          <Link
-            href="/dashboard"
-            className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
-              pathname === '/dashboard'
-                ? 'bg-blue-600 text-white'
-                : 'text-gray-500 hover:bg-gray-800 hover:text-white'
-            }`}
-          >
-            <span className="font-medium">Dashboard</span>
-          </Link>
-
-          <Link
-            href="/dashboard/photos"
-            className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
-              pathname === '/dashboard/photos'
-                ? 'bg-blue-600 text-white'
-                : 'text-gray-500 hover:bg-gray-800 hover:text-white'
-            }`}
-          >
-            <span className="font-medium">Photo Management</span>
-          </Link>
-        </nav>
-
-        {/* User Info & Sign Out */}
-        <div className="p-4 border-t border-gray-700">
-          <div className="mb-3">
-            <div className="text-xs text-gray-500 mb-1">Signed in as</div>
-            <div className="text-sm font-medium truncate" title={user?.email || ''}>
-              {user?.email}
-            </div>
-          </div>
-          <button
-            onClick={handleSignOut}
-            className="w-full px-4 py-2 hover:bg-red-700 rounded-lg transition-colors font-medium text-sm"
-          >
-            Sign Out
-          </button>
-        </div>
-      </aside>
-
-      {/* Main Content */}
-      <main className="flex-1 bg-gray-50">
-        {children}
-      </main>
-    </div>
+    <>
+      <div className="fixed sm:hidden h-6 sm:h-10 md:h-14 w-full top-0 left-0 z-30 pointer-events-none content-fade-out" />
+      <div className="flex flex-col mobile:flex-row">
+        <DashboardNavbar user={user} handleSignOut={handleSignOut} />
+        <main className="relative flex-1 contain-[inline-size]">
+          <div className="absolute w-full h-px opacity-50 bg-rurikon-border right-0 mobile:right-auto mobile:left-0 mobile:w-px mobile:h-full mobile:opacity-100 mix-blend-multiply" />
+          <ViewTransition name="crossfade">
+            <article className="pl-0 pt-6 mobile:pt-0 mobile:pl-6 sm:pl-10 md:pl-14">
+              {children}
+            </article>
+          </ViewTransition>
+        </main>
+      </div>
+    </>
   )
 }

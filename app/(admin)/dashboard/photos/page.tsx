@@ -175,8 +175,8 @@ export default function PhotosManagement() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
-      <div className="max-w-7xl mx-auto">
+    <div>
+      <div className="mx-auto">
         <h1 className="text-3xl font-bold mb-8 text-gray-900">Photo Management</h1>
 
         {isLoading && (
