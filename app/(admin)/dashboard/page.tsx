@@ -2,6 +2,7 @@
 
 import { useAuth } from '@/lib/firebase/useAuth'
 import useSWR, { mutate } from 'swr'
+import { Folder, Camera, CheckCircle, RefreshCw } from 'lucide-react'
 
 interface SystemStats {
   totalGalleries: number
@@ -48,38 +49,52 @@ export default function DashboardPage() {
         )}
 
         {/* Stats Grid */}
-        <div className="mt-14 grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-white rounded-lg border border-rurikon-100 p-6">
-            <div className="flex items-center justify-between">
-              <div>
+        <div className="mt-14 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="bg-white rounded-lg border border-rurikon-100 border-l-4 border-l-rurikon-600 p-4">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="h-10 w-10 rounded-lg bg-rurikon-50 border border-rurikon-200 flex items-center justify-center">
+                <Folder className="h-5 w-5 text-rurikon-600" />
+              </div>
+              <div className="flex-1">
                 <p className="text-sm text-rurikon-400 lowercase">Total Galleries</p>
-                <p className="text-3xl font-semibold text-rurikon-600 mt-2">
-                  {isLoading ? '...' : stats.totalGalleries}
+                <p className="text-2xl font-semibold text-rurikon-600 mt-1">
+                  {isLoading ? (
+                    <span className="animate-pulse">...</span>
+                  ) : (
+                    stats.totalGalleries
+                  )}
                 </p>
               </div>
-              <div className="text-4xl">📁</div>
             </div>
           </div>
 
-          <div className="bg-white rounded-lg border border-rurikon-100 p-6">
-            <div className="flex items-center justify-between">
-              <div>
+          <div className="bg-white rounded-lg border border-rurikon-100 border-l-4 border-l-rurikon-600 p-4">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="h-10 w-10 rounded-lg bg-rurikon-50 border border-rurikon-200 flex items-center justify-center">
+                <Camera className="h-5 w-5 text-rurikon-600" />
+              </div>
+              <div className="flex-1">
                 <p className="text-sm text-rurikon-400 lowercase">Total Photos</p>
-                <p className="text-3xl font-semibold text-rurikon-600 mt-2">
-                  {isLoading ? '...' : stats.totalPhotos}
+                <p className="text-2xl font-semibold text-rurikon-600 mt-1">
+                  {isLoading ? (
+                    <span className="animate-pulse">...</span>
+                  ) : (
+                    stats.totalPhotos
+                  )}
                 </p>
               </div>
-              <div className="text-4xl">📸</div>
             </div>
           </div>
 
-          <div className="bg-white rounded-lg border border-rurikon-100 p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-rurikon-400 lowercase">Account Status</p>
-                <p className="text-lg font-semibold text-rurikon-600 mt-2 lowercase">Active</p>
+          <div className="bg-white rounded-lg border border-green-100 border-l-4 border-l-green-500 p-4">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="h-10 w-10 rounded-lg bg-green-50 border border-green-200 flex items-center justify-center">
+                <CheckCircle className="h-5 w-5 text-green-600" />
               </div>
-              <div className="text-4xl">✅</div>
+              <div className="flex-1">
+                <p className="text-sm text-rurikon-400 lowercase">Account Status</p>
+                <p className="text-lg font-semibold text-green-600 mt-1 lowercase">Active</p>
+              </div>
             </div>
           </div>
         </div>
@@ -117,7 +132,9 @@ export default function DashboardPage() {
               href="/dashboard/photos"
               className="flex items-center space-x-4 p-4 bg-rurikon-50 border-2 border-rurikon-200 rounded-lg hover:bg-rurikon-100 hover:border-rurikon-300 transition-colors"
             >
-              <span className="text-3xl">📸</span>
+              <div className="h-10 w-10 rounded-lg bg-white border border-rurikon-200 flex items-center justify-center shrink-0">
+                <Camera className="h-5 w-5 text-rurikon-600" />
+              </div>
               <div>
                 <h3 className="font-semibold text-rurikon-600 lowercase">Manage Photos</h3>
                 <p className="text-sm text-rurikon-600 lowercase">Add, edit, or remove photos from galleries</p>
@@ -128,7 +145,9 @@ export default function DashboardPage() {
               onClick={() => mutate('/api/photos')}
               className="flex items-center space-x-4 p-4 bg-rurikon-50 border-2 border-rurikon-200 rounded-lg hover:bg-rurikon-100 hover:border-rurikon-300 transition-colors"
             >
-              <span className="text-3xl">🔄</span>
+              <div className="h-10 w-10 rounded-lg bg-white border border-rurikon-200 flex items-center justify-center shrink-0">
+                <RefreshCw className="h-5 w-5 text-rurikon-600" />
+              </div>
               <div className="text-left">
                 <h3 className="font-semibold text-rurikon-600 lowercase">Refresh Stats</h3>
                 <p className="text-sm text-rurikon-600 lowercase">Update dashboard statistics</p>
