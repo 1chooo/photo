@@ -41,6 +41,8 @@ export default function PhotosManagement() {
   const [editingAlt, setEditingAlt] = useState<string>('');
   const [editingUrl, setEditingUrl] = useState<string>('');
   const [editingVariant, setEditingVariant] = useState<'original' | 'square'>('original');
+  const [editingSlug, setEditingSlug] = useState<string | null>(null);
+  const [newSlugName, setNewSlugName] = useState<string>('');
 
   const handleAddPhoto = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -164,6 +166,44 @@ export default function PhotosManagement() {
     setDraggedPhoto(null);
   };
 
+  const handleRenameSlug = async (oldSlug: string, newSlug: string) => {
+    if (!newSlug.trim() || oldSlug === newSlug) {
+      alert('Please enter a valid new slug');
+      return;
+    }
+
+    if (galleries.find(g => g.slug === newSlug)) {
+      alert('This slug already exists');
+      return;
+    }
+
+    if (!confirm(`Rename "${oldSlug}" to "${newSlug}"?`)) return;
+
+    setLoading(true);
+    try {
+      const response = await fetch('/api/photos/rename', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ oldSlug, newSlug }),
+      });
+
+      if (response.ok) {
+        mutate('/api/photos'); // SWR revalidation
+        setSelectedSlug(newSlug);
+        setEditingSlug(null);
+        setNewSlugName('');
+      } else {
+        const data = await response.json();
+        alert(data.error || 'Rename failed');
+      }
+    } catch (error) {
+      console.error('Error renaming slug:', error);
+      alert('Rename failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const currentGallery = galleries.find(g => g.slug === selectedSlug);
 
   if (error) {
@@ -283,20 +323,65 @@ export default function PhotosManagement() {
           
           <div className="space-y-2 mb-6">
             {galleries.map(gallery => (
-              <button
-                key={gallery.slug}
-                onClick={() => setSelectedSlug(gallery.slug)}
-                className={`w-full text-left px-4 py-3 rounded-md transition-colors lowercase ${
-                  selectedSlug === gallery.slug
-                    ? 'bg-rurikon-50 text-rurikon-600 border-2 border-rurikon-300'
-                    : 'bg-white text-rurikon-600 hover:bg-rurikon-50 border-2 border-rurikon-100'
-                }`}
-              >
-                <span className="font-semibold">{gallery.slug}</span>
-                <span className="ml-2 text-sm text-rurikon-400">
-                  ({gallery.photos.length} photos)
-                </span>
-              </button>
+              <div key={gallery.slug}>
+                {editingSlug === gallery.slug ? (
+                  <div className="flex gap-2 p-2 bg-rurikon-50 rounded-md border-2 border-rurikon-300">
+                    <input
+                      type="text"
+                      value={newSlugName}
+                      onChange={(e) => setNewSlugName(e.target.value)}
+                      placeholder="Enter new slug name"
+                      className="flex-1 px-3 py-2 border border-rurikon-200 rounded-md focus:ring-2 focus:ring-rurikon-400 focus:border-rurikon-400 text-rurikon-600 lowercase"
+                      autoFocus
+                    />
+                    <button
+                      onClick={() => handleRenameSlug(gallery.slug, newSlugName)}
+                      disabled={loading}
+                      className="bg-rurikon-600 text-white px-4 py-2 rounded-md hover:bg-rurikon-700 disabled:bg-rurikon-200 disabled:cursor-not-allowed lowercase"
+                    >
+                      Save
+                    </button>
+                    <button
+                      onClick={() => {
+                        setEditingSlug(null);
+                        setNewSlugName('');
+                      }}
+                      className="bg-rurikon-100 text-rurikon-600 px-4 py-2 rounded-md hover:bg-rurikon-200 lowercase"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setSelectedSlug(gallery.slug)}
+                      className={`flex-1 text-left px-4 py-3 rounded-md transition-colors lowercase ${
+                        selectedSlug === gallery.slug
+                          ? 'bg-rurikon-50 text-rurikon-600 border-2 border-rurikon-300'
+                          : 'bg-white text-rurikon-600 hover:bg-rurikon-50 border-2 border-rurikon-100'
+                      }`}
+                    >
+                      <span className="font-semibold">{gallery.slug}</span>
+                      <span className="ml-2 text-sm text-rurikon-400">
+                        ({gallery.photos.length} photos)
+                      </span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        setEditingSlug(gallery.slug);
+                        setNewSlugName(gallery.slug);
+                      }}
+                      className="px-3 py-2 text-sm text-rurikon-600 hover:text-rurikon-700 hover:bg-rurikon-50 rounded-md lowercase"
+                      title="Rename slug"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" />
+                        <path fillRule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clipRule="evenodd" />
+                      </svg>
+                    </button>
+                  </div>
+                )}
+              </div>
             ))}
           </div>
 
