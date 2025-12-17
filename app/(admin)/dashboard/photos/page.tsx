@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
+import useSWR, { mutate } from 'swr';
 
 interface Photo {
   id: string;
@@ -16,8 +17,19 @@ interface Gallery {
   photos: Photo[];
 }
 
+const fetcher = (url: string) => fetch(url).then((res) => res.json());
+
 export default function PhotosManagement() {
-  const [galleries, setGalleries] = useState<Gallery[]>([]);
+  const { data, error, isLoading } = useSWR<{ galleries: Gallery[] }>(
+    '/api/photos',
+    fetcher,
+    {
+      revalidateOnFocus: true,
+      revalidateOnReconnect: true,
+    }
+  );
+
+  const galleries = data?.galleries || [];
   const [selectedSlug, setSelectedSlug] = useState<string>('');
   const [newSlug, setNewSlug] = useState<string>('');
   const [newPhotoUrl, setNewPhotoUrl] = useState<string>('');
@@ -29,20 +41,6 @@ export default function PhotosManagement() {
   const [editingAlt, setEditingAlt] = useState<string>('');
   const [editingUrl, setEditingUrl] = useState<string>('');
   const [editingVariant, setEditingVariant] = useState<'original' | 'square'>('original');
-
-  useEffect(() => {
-    fetchAllGalleries();
-  }, []);
-
-  const fetchAllGalleries = async () => {
-    try {
-      const response = await fetch('/api/photos');
-      const data = await response.json();
-      setGalleries(data.galleries || []);
-    } catch (error) {
-      console.error('Error fetching galleries:', error);
-    }
-  };
 
   const handleAddPhoto = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -72,7 +70,7 @@ export default function PhotosManagement() {
         setNewPhotoAlt('');
         setNewPhotoVariant('original');
         setNewSlug('');
-        await fetchAllGalleries();
+        mutate('/api/photos'); // SWR revalidation
         setSelectedSlug(slugToUse);
       } else {
         alert('Upload failed');
@@ -94,7 +92,7 @@ export default function PhotosManagement() {
       });
 
       if (response.ok) {
-        await fetchAllGalleries();
+        mutate('/api/photos'); // SWR revalidation
       } else {
         alert('Delete failed');
       }
@@ -113,7 +111,7 @@ export default function PhotosManagement() {
       });
 
       if (response.ok) {
-        await fetchAllGalleries();
+        mutate('/api/photos'); // SWR revalidation
         setEditingPhotoId(null);
         setEditingAlt('');
         setEditingUrl('');
@@ -157,7 +155,7 @@ export default function PhotosManagement() {
       });
 
       if (response.ok) {
-        await fetchAllGalleries();
+        mutate('/api/photos'); // SWR revalidation
       }
     } catch (error) {
       console.error('Error reordering photos:', error);
@@ -168,10 +166,24 @@ export default function PhotosManagement() {
 
   const currentGallery = galleries.find(g => g.slug === selectedSlug);
 
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-8 flex items-center justify-center">
+        <div className="text-red-600">Failed to load galleries. Please try again.</div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 p-8">
       <div className="max-w-7xl mx-auto">
         <h1 className="text-3xl font-bold mb-8 text-gray-900">Photo Management</h1>
+
+        {isLoading && (
+          <div className="bg-white rounded-lg shadow p-6 mb-8 text-center">
+            <p className="text-gray-600">Loading galleries...</p>
+          </div>
+        )}
 
         {/* Add Photo Form */}
         <div className="bg-white rounded-lg shadow p-6 mb-8">

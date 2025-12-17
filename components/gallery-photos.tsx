@@ -17,7 +17,10 @@ async function getPhotos(slug: string): Promise<PhotoData[]> {
   try {
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
     const response = await fetch(`${baseUrl}/api/photos?slug=${slug}`, {
-      cache: 'no-store', // 確保每次都拿到最新資料
+      next: { 
+        revalidate: 3600, // Cache for 1 hour, revalidate after
+        tags: [`gallery-${slug}`] // Tag for on-demand revalidation
+      },
     });
     
     if (!response.ok) {
@@ -49,7 +52,7 @@ export default async function GalleryPhotos({ slug }: GalleryPhotosProps) {
             key={photo.id}
             image={{
               id: photo.id,
-              src: photo.url,
+              src: `/api/photos/image/${slug}/${photo.order}`,
               alt: photo.alt || '',
             }}
             title={photo.alt || undefined}

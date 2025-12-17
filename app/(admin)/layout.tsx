@@ -74,10 +74,9 @@ export default function AdminLayout({
             className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
               pathname === '/dashboard'
                 ? 'bg-blue-600 text-white'
-                : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+                : 'text-gray-500 hover:bg-gray-800 hover:text-white'
             }`}
           >
-            <span className="text-xl">📊</span>
             <span className="font-medium">Dashboard</span>
           </Link>
 
@@ -86,32 +85,11 @@ export default function AdminLayout({
             className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
               pathname === '/dashboard/photos'
                 ? 'bg-blue-600 text-white'
-                : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+                : 'text-gray-500 hover:bg-gray-800 hover:text-white'
             }`}
           >
-            <span className="text-xl">📸</span>
             <span className="font-medium">Photo Management</span>
           </Link>
-
-          <div className="pt-4 mt-4 border-t border-gray-700">
-            <div className="px-4 py-2 text-xs text-gray-500 uppercase tracking-wider">
-              Coming Soon
-            </div>
-            <button
-              disabled
-              className="w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-600 cursor-not-allowed"
-            >
-              <span className="text-xl">📝</span>
-              <span className="font-medium">Content Editor</span>
-            </button>
-            <button
-              disabled
-              className="w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-600 cursor-not-allowed"
-            >
-              <span className="text-xl">⚙️</span>
-              <span className="font-medium">Settings</span>
-            </button>
-          </div>
         </nav>
 
         {/* User Info & Sign Out */}
