@@ -15,7 +15,7 @@ interface GalleryPhotosProps {
 
 async function getPhotos(slug: string): Promise<PhotoData[]> {
   try {
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
     const response = await fetch(`${baseUrl}/api/photos?slug=${slug}`, {
       next: { 
         revalidate: 3600, // Cache for 1 hour, revalidate after
