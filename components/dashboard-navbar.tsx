@@ -50,6 +50,7 @@ export default function DashboardNavbar({ user, handleSignOut }: DashboardNavbar
         <Item href='/dashboard'>Admin</Item>
         <Item href='/dashboard/photos'>Photo</Item>
         <Item href='/dashboard/homepage'>Homepage</Item>
+        <Item href='/dashboard/telegram'>Telegram</Item>
       </ul>
       <div className='hidden mobile:block mobile:sticky bottom-6 sm:bottom-10 md:bottom-14 pt-6 border-t border-rurikon-100 text-right'>
         <div className="text-xs text-rurikon-300 mb-2 lowercase">signed in as</div>
