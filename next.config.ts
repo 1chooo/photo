@@ -35,15 +35,9 @@ export default withMDX()({
       },
       {
         protocol: 'https',
-        hostname: 'p.1chooo.com',
-        port: '',
-        pathname: '/api/photos/image/**',
-      },
-      {
-        protocol: 'http',
         hostname: 'photo.1chooo.com',
         port: '',
-        pathname: '/api/photos/image/**',
+        pathname: '/**',
       },
     ],
     minimumCacheTTL: 31536000, // 1 year cache for images
