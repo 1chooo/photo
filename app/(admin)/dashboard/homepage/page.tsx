@@ -327,8 +327,9 @@ export default function HomepagePhotosManagement() {
                                     src={item.photo!.url}
                                     alt={item.photo!.alt || ''}
                                     fill
+                                    quality={70}
                                     className="object-cover object-center"
-                                    sizes="(max-width: 768px) 100vw, 50vw"
+                                    sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
                                     unoptimized
                                   />
                                   <div className="absolute inset-0 group-hover:bg-opacity-40 transition-all flex items-center justify-center">

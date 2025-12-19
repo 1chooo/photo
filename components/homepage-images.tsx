@@ -28,7 +28,7 @@ interface HomepageImageItemProps {
   image: GalleryImage;
 }
 
-function HomepageImageItem({ image }: HomepageImageItemProps) {
+function HomepageImageItem({ image, isPriority = false }: HomepageImageItemProps & { isPriority?: boolean }) {
   const [aspectRatio, setAspectRatio] = useState<string>('aspect-square');
   const [isLoaded, setIsLoaded] = useState(false);
 
@@ -61,7 +61,10 @@ function HomepageImageItem({ image }: HomepageImageItemProps) {
           className="object-cover object-center transition duration-500 transform hover:scale-105"
           src={proxySrc}
           fill
-          sizes="(max-width: 768px) 100vw, 50vw"
+          quality={70}
+          priority={isPriority}
+          loading={isPriority ? undefined : 'lazy'}
+          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1536px) 33vw, 25vw"
           onLoad={(e) => handleLoadingComplete(e.currentTarget)}
         />
       </div>

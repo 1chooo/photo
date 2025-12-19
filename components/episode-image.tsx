@@ -41,7 +41,8 @@ export default function EpisodeImage({ image, title, variant = 'original' }: Epi
                         }`}
                         src={image.src}
                         fill
-                        sizes="100vw"
+                        quality={70}
+                        sizes="(max-width: 768px) 100vw, (max-width: 1536px) 80vw, 1200px"
                         placeholder="blur"
                         blurDataURL={getBlurDataURL(800, 800)}
                         onLoad={() => setIsLoaded(true)}
@@ -59,7 +60,8 @@ export default function EpisodeImage({ image, title, variant = 'original' }: Epi
                         src={image.src}
                         width={image.width || 1200}
                         height={image.height || 800}
-                        sizes="100vw"
+                        quality={70}
+                        sizes="(max-width: 768px) 100vw, (max-width: 1536px) 80vw, 1200px"
                         placeholder="blur"
                         blurDataURL={getBlurDataURL(image.width || 1200, image.height || 800)}
                         onLoad={() => setIsLoaded(true)}
