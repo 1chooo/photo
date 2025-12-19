@@ -18,14 +18,63 @@ interface Photo {
   order: number;
 }
 
-// 簡化後的 Props，只保留樣式相關設定
 interface HomepageImagesProps {
   layout?: GalleryLayout;
-  columns?: 1 | 2 | 3 | 4; // Column configuration
+  columns?: 1 | 2 | 3 | 4;
 }
 
 interface HomepageImageItemProps {
   image: GalleryImage;
+}
+
+// --- Skeleton Component ---
+// 模擬圖片載入時的佔位符
+function GallerySkeleton() {
+  // 模擬一個典型的佈局單元 (左側半寬x4+全寬, 右側全寬+半寬x4)
+  // 這與 getLayout(4) 的邏輯相對應
+  return (
+    <section id="homepage-images-skeleton" className="animate-pulse">
+      <div className="container w-full mx-auto px-4">
+        <div className="flex flex-wrap w-full">
+          {/* Column 1 Simulation */}
+          <div className="flex w-full md:w-1/2 flex-wrap">
+             {/* Half */}
+             <div className="w-1/2 p-1"><div className="w-full aspect-square bg-gray-100 rounded-sm"></div></div>
+             <div className="w-1/2 p-1"><div className="w-full aspect-square bg-gray-100 rounded-sm"></div></div>
+             {/* Half */}
+             <div className="w-1/2 p-1"><div className="w-full aspect-square bg-gray-100 rounded-sm"></div></div>
+             <div className="w-1/2 p-1"><div className="w-full aspect-square bg-gray-100 rounded-sm"></div></div>
+             {/* Full */}
+             <div className="w-full p-1"><div className="w-full aspect-3/2 bg-gray-100 rounded-sm"></div></div>
+          </div>
+
+          {/* Column 2 Simulation */}
+          <div className="flex w-full md:w-1/2 flex-wrap">
+             {/* Full */}
+             <div className="w-full p-1"><div className="w-full aspect-3/2 bg-gray-100 rounded-sm"></div></div>
+             {/* Half */}
+             <div className="w-1/2 p-1"><div className="w-full aspect-square bg-gray-100 rounded-sm"></div></div>
+             <div className="w-1/2 p-1"><div className="w-full aspect-square bg-gray-100 rounded-sm"></div></div>
+             {/* Half */}
+             <div className="w-1/2 p-1"><div className="w-full aspect-square bg-gray-100 rounded-sm"></div></div>
+             <div className="w-1/2 p-1"><div className="w-full aspect-square bg-gray-100 rounded-sm"></div></div>
+          </div>
+          
+           {/* Column 3 Simulation (Repeat for visual density) */}
+           <div className="flex w-full md:w-1/2 flex-wrap md:flex">
+             <div className="w-1/2 p-1"><div className="w-full aspect-square bg-gray-100 rounded-sm"></div></div>
+             <div className="w-1/2 p-1"><div className="w-full aspect-square bg-gray-100 rounded-sm"></div></div>
+             <div className="w-full p-1"><div className="w-full aspect-3/2 bg-gray-100 rounded-sm"></div></div>
+          </div>
+           <div className="flex w-full md:w-1/2 flex-wrap md:flex">
+             <div className="w-full p-1"><div className="w-full aspect-3/2 bg-gray-100 rounded-sm"></div></div>
+             <div className="w-1/2 p-1"><div className="w-full aspect-square bg-gray-100 rounded-sm"></div></div>
+             <div className="w-1/2 p-1"><div className="w-full aspect-square bg-gray-100 rounded-sm"></div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
 }
 
 function HomepageImageItem({ image, isPriority = false }: HomepageImageItemProps & { isPriority?: boolean }) {
@@ -35,7 +84,7 @@ function HomepageImageItem({ image, isPriority = false }: HomepageImageItemProps
   // If width and height are provided, calculate aspect ratio
   if (image.width && image.height && !isLoaded) {
     const isPortrait = image.height > image.width;
-    const ratio = isPortrait ? 'aspect-[2/3]' : 'aspect-[3/2]';
+    const ratio = isPortrait ? 'aspect-[2/3]' : 'aspect-3/2';
     if (aspectRatio !== ratio) {
       setAspectRatio(ratio);
       setIsLoaded(true);
@@ -45,7 +94,7 @@ function HomepageImageItem({ image, isPriority = false }: HomepageImageItemProps
   const handleLoadingComplete = (img: HTMLImageElement) => {
     // Determine orientation from the loaded image
     const isPortrait = img.naturalHeight > img.naturalWidth;
-    const ratio = isPortrait ? 'aspect-[2/3]' : 'aspect-[3/2]';
+    const ratio = isPortrait ? 'aspect-[2/3]' : 'aspect-3/2';
     setAspectRatio(ratio);
     setIsLoaded(true);
   };
@@ -54,11 +103,13 @@ function HomepageImageItem({ image, isPriority = false }: HomepageImageItemProps
   const proxySrc = image.id ? `/api/homepage/image/${image.id}` : image.src;
   
   return (
-    <div className="overflow-hidden h-full w-full">
+    <div className="overflow-hidden h-full w-full bg-gray-50">
       <div className={`block h-full w-full relative ${aspectRatio} transition-all duration-300`}>
         <Image
           alt={image.alt}
-          className="object-cover object-center transition duration-500 transform hover:scale-105"
+          className={`object-cover object-center transition duration-700 transform hover:scale-105 ${
+            isLoaded ? 'opacity-100 blur-0' : 'opacity-0 blur-sm'
+          }`}
           src={proxySrc}
           fill
           quality={70}
@@ -117,7 +168,6 @@ export default function HomepageImages({
   layout, 
   columns = 4
 }: HomepageImagesProps) {
-  // 狀態初始化為空陣列和 loading 狀態
   const [images, setImages] = useState<GalleryImage[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -132,7 +182,6 @@ export default function HomepageImages({
           return;
         }
 
-        // 轉換為 Gallery 組件需要的格式
         const galleryImages: GalleryImage[] = photos.map(photo => ({
           id: photo.id,
           src: photo.url,
@@ -151,29 +200,21 @@ export default function HomepageImages({
     }
 
     fetchHomepagePhotos();
-  }, []); // 移除依賴陣列中的變數，只在組件掛載時執行一次
+  }, []);
 
-  // Use provided layout or generate from columns prop
   const currentLayout = layout || getLayout(columns);
 
   if (loading) {
-    return (
-      <section id="homepage-images">
-        <div className="container w-full mx-auto px-4">
-          <div className="flex items-center justify-center min-h-[50vh]">
-            <p className="text-rurikon-400">Loading...</p>
-          </div>
-        </div>
-      </section>
-    );
+    return <GallerySkeleton />;
   }
 
   if (images.length === 0) {
     return (
       <section id="homepage-images">
         <div className="container w-full mx-auto px-4">
-          <div className="flex items-center justify-center min-h-[50vh]">
-            <p className="text-rurikon-400">No photos available</p>
+          <div className="flex flex-col items-center justify-center min-h-[50vh] text-rurikon-400 bg-gray-50 rounded-lg">
+             <div className="w-16 h-16 bg-gray-100 rounded-full mb-4 animate-pulse"></div>
+             <p>No photos available yet</p>
           </div>
         </div>
       </section>
@@ -182,14 +223,12 @@ export default function HomepageImages({
 
   let imageIndex = 0;
 
-  // Calculate how many times we need to repeat the layout pattern
   const totalImagesInPattern = currentLayout.columns.reduce(
     (sum, column) => sum + column.length,
     0
   );
   const timesToRepeat = Math.ceil(images.length / totalImagesInPattern);
 
-  // Create extended columns by repeating the pattern
   const extendedColumns = Array.from({ length: timesToRepeat }, (_, repeatIndex) =>
     currentLayout.columns.map((column, columnIndex) => ({
       column,
@@ -214,7 +253,6 @@ export default function HomepageImages({
               }
             });
 
-            // Skip rendering empty columns
             if (columnImages.length === 0) {
               return null;
             }
@@ -230,7 +268,10 @@ export default function HomepageImages({
                   
                   return (
                     <div key={itemIndex} className={`${widthClass} p-1`}>
-                      <HomepageImageItem image={item.image} />
+                      <HomepageImageItem 
+                        image={item.image} 
+                        isPriority={imageIndex < 4} // 優化：前幾張圖片優先載入
+                      />
                     </div>
                   );
                 })}

@@ -452,7 +452,7 @@ export default function CategoryManagementPage() {
   }
 
   return (
-    <div className="pb-6 sm:pb-10 md:pb-14 px-1">
+    <div className="pb-6 sm:pb-10 md:pb-14">
       <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
         <h1 className="text-2xl font-bold text-rurikon-800 tracking-tight">Category Management</h1>
         <div className="text-sm text-gray-500">

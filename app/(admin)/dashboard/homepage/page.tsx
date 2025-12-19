@@ -227,7 +227,7 @@ export default function HomepagePhotosManagement() {
   
 
   return (
-    <div className="pb-10 max-w-400 mx-auto">
+    <div className="pb-10 mx-auto">
       <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
         <div>
            <h1 className="text-2xl font-bold text-rurikon-800 tracking-tight">Homepage Gallery</h1>
