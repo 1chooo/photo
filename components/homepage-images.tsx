@@ -18,18 +18,17 @@ interface Photo {
   order: number;
 }
 
-interface GalleryProps {
-  images?: GalleryImage[];
+// 簡化後的 Props，只保留樣式相關設定
+interface HomepageImagesProps {
   layout?: GalleryLayout;
-  fetchFromApi?: boolean; // 是否從 API 獲取數據
   columns?: 1 | 2 | 3 | 4; // Column configuration
 }
 
-interface GalleryItemProps {
+interface HomepageImageItemProps {
   image: GalleryImage;
 }
 
-function GalleryItem({ image }: GalleryItemProps) {
+function HomepageImageItem({ image }: HomepageImageItemProps) {
   const [aspectRatio, setAspectRatio] = useState<string>('aspect-square');
   const [isLoaded, setIsLoaded] = useState(false);
 
@@ -71,7 +70,7 @@ function GalleryItem({ image }: GalleryItemProps) {
 }
 
 // Get gallery layout based on column count
-const getGalleryLayout = (columns: 1 | 2 | 3 | 4): GalleryLayout => {
+const getLayout = (columns: 1 | 2 | 3 | 4): GalleryLayout => {
   switch (columns) {
     case 1:
       return {
@@ -111,56 +110,52 @@ const getGalleryLayout = (columns: 1 | 2 | 3 | 4): GalleryLayout => {
   }
 };
 
-export default function Gallery({ 
-  images: externalImages, 
+export default function HomepageImages({ 
   layout, 
-  fetchFromApi = true,
   columns = 4
-}: GalleryProps) {
-  const [images, setImages] = useState<GalleryImage[]>(externalImages || []);
-  const [loading, setLoading] = useState(fetchFromApi);
+}: HomepageImagesProps) {
+  // 狀態初始化為空陣列和 loading 狀態
+  const [images, setImages] = useState<GalleryImage[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // 如果需要從 API 獲取數據
-    if (fetchFromApi) {
-      async function fetchHomepagePhotos() {
-        try {
-          const res = await fetch('/api/homepage/images');
-          const { images: photos } = await res.json() as { images: Photo[] };
+    async function fetchHomepagePhotos() {
+      try {
+        const res = await fetch('/api/homepage/images');
+        const { images: photos } = await res.json() as { images: Photo[] };
 
-          if (!photos || photos.length === 0) {
-            setImages([]);
-            return;
-          }
-
-          // 轉換為 Gallery 組件需要的格式
-          const galleryImages: GalleryImage[] = photos.map(photo => ({
-            id: photo.id,
-            src: photo.url,
-            alt: photo.alt || photo.file_name,
-            width: photo.width,
-            height: photo.height,
-          }));
-
-          setImages(galleryImages);
-        } catch (error) {
-          console.error('Failed to fetch homepage photos:', error);
+        if (!photos || photos.length === 0) {
           setImages([]);
-        } finally {
-          setLoading(false);
+          return;
         }
-      }
 
-      fetchHomepagePhotos();
+        // 轉換為 Gallery 組件需要的格式
+        const galleryImages: GalleryImage[] = photos.map(photo => ({
+          id: photo.id,
+          src: photo.url,
+          alt: photo.alt || photo.file_name,
+          width: photo.width,
+          height: photo.height,
+        }));
+
+        setImages(galleryImages);
+      } catch (error) {
+        console.error('Failed to fetch homepage photos:', error);
+        setImages([]);
+      } finally {
+        setLoading(false);
+      }
     }
-  }, [fetchFromApi]);
+
+    fetchHomepagePhotos();
+  }, []); // 移除依賴陣列中的變數，只在組件掛載時執行一次
 
   // Use provided layout or generate from columns prop
-  const galleryLayout = layout || getGalleryLayout(columns);
+  const currentLayout = layout || getLayout(columns);
 
   if (loading) {
     return (
-      <section id="gallery">
+      <section id="homepage-images">
         <div className="container w-full mx-auto px-4">
           <div className="flex items-center justify-center min-h-[50vh]">
             <p className="text-rurikon-400">Loading...</p>
@@ -172,7 +167,7 @@ export default function Gallery({
 
   if (images.length === 0) {
     return (
-      <section id="gallery">
+      <section id="homepage-images">
         <div className="container w-full mx-auto px-4">
           <div className="flex items-center justify-center min-h-[50vh]">
             <p className="text-rurikon-400">No photos available</p>
@@ -185,7 +180,7 @@ export default function Gallery({
   let imageIndex = 0;
 
   // Calculate how many times we need to repeat the layout pattern
-  const totalImagesInPattern = galleryLayout.columns.reduce(
+  const totalImagesInPattern = currentLayout.columns.reduce(
     (sum, column) => sum + column.length,
     0
   );
@@ -193,14 +188,14 @@ export default function Gallery({
 
   // Create extended columns by repeating the pattern
   const extendedColumns = Array.from({ length: timesToRepeat }, (_, repeatIndex) =>
-    galleryLayout.columns.map((column, columnIndex) => ({
+    currentLayout.columns.map((column, columnIndex) => ({
       column,
       key: `${repeatIndex}-${columnIndex}`,
     }))
   ).flat();
 
   return (
-    <section id="gallery">
+    <section id="homepage-images">
       <div className="container w-full mx-auto px-4">
         <div className="flex flex-wrap w-full">
           {extendedColumns.map(({ column, key }) => {
@@ -232,7 +227,7 @@ export default function Gallery({
                   
                   return (
                     <div key={itemIndex} className={`${widthClass} p-1`}>
-                      <GalleryItem image={item.image} />
+                      <HomepageImageItem image={item.image} />
                     </div>
                   );
                 })}

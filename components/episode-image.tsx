@@ -1,18 +1,23 @@
 'use client';
 
 import Image from 'next/image';
-import { GalleryImage } from '@/types/gallery';
 import { getBlurDataURL } from '@/lib/blur-placeholder';
 import { useState } from 'react';
 import cn from 'clsx';
 
-interface PhotoProps {
-  image: GalleryImage;
+interface EpisodeImageProps {
+  image: {
+    id: string;
+    src: string;
+    alt: string;
+    width?: number;
+    height?: number;
+  };
   title?: React.ReactNode;
   variant?: 'original' | 'square';
 }
 
-export default function Photo({ image, title, variant = 'original' }: PhotoProps) {
+export default function EpisodeImage({ image, title, variant = 'original' }: EpisodeImageProps) {
   const [isLoaded, setIsLoaded] = useState(false);
   
   if (!image) {

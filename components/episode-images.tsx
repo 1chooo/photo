@@ -1,6 +1,6 @@
-import Photo from '@/components/photo';
+import EpisodeImage from '@/components/episode-image';
 
-interface PhotoData {
+interface EpisodeImageData {
   id: string;
   url: string;
   alt?: string;
@@ -9,16 +9,16 @@ interface PhotoData {
   createdAt: string;
 }
 
-interface GalleryPhotosProps {
+interface EpisodeImagesProps {
   slug: string;
 }
 
-async function getPhotos(slug: string): Promise<PhotoData[]> {
+async function getEpisodePhotos(slug: string): Promise<EpisodeImageData[]> {
   try {
     const { getAdminDb } = await import('@/lib/firebase/admin');
     const db = getAdminDb();
     
-    // 從 telegram-categories collection 獲取資料
+    // fetch category document by slug
     const docRef = db.collection('telegram-categories').doc(slug);
     const doc = await docRef.get();
     
@@ -30,23 +30,23 @@ async function getPhotos(slug: string): Promise<PhotoData[]> {
     const data = doc.data();
     const images = data?.images || [];
     
-    // 將 telegram-categories 格式轉換為 PhotoData 格式
+    // construct EpisodeImageData array
     return images.map((img: any, index: number) => ({
       id: img.id,
       url: `/api/homepage/image/${img.id}`,
       alt: img.alt || '',
       variant: img.variant || 'original',
-      order: index, // 使用陣列順序作為 order
+      order: index,
       createdAt: img.uploaded_at || new Date().toISOString(),
     }));
   } catch (error) {
-    console.error('Error fetching photos:', error);
+    console.error('Error fetching episode photos:', error);
     return [];
   }
 }
 
-export default async function GalleryPhotos({ slug }: GalleryPhotosProps) {
-  const photos = await getPhotos(slug);
+export default async function EpisodeImages({ slug }: EpisodeImagesProps) {
+  const photos = await getEpisodePhotos(slug);
   
   if (!photos || photos.length === 0) {
     return null;
@@ -55,11 +55,11 @@ export default async function GalleryPhotos({ slug }: GalleryPhotosProps) {
   return (
     <>
       {photos.map((photo) => (
-        <Photo
+        <EpisodeImage
           key={photo.id}
           image={{
             id: photo.id,
-            src: photo.url, // 直接使用圖片的 URL
+            src: photo.url,
             alt: photo.alt || '',
           }}
           title={photo.alt || undefined}
