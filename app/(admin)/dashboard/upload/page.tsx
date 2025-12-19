@@ -148,6 +148,18 @@ export default function TelegramUploadPage() {
             let errorType: FailedUpload['errorType'] = 'unknown'
             let errorMessage = data.error || 'Upload failed'
 
+            // 檢查是否為未設定 Telegram 設定
+            if (response.status === 400 && data.redirectTo === '/dashboard/settings') {
+              setError(errorMessage)
+              setUploading(false)
+              setUploadProgress(null)
+              // 導向設定頁面
+              setTimeout(() => {
+                window.location.href = '/dashboard/settings'
+              }, 3000)
+              return
+            }
+
             if (response.status === 400) {
               errorType = 'validation'
             } else if (response.status === 401 || response.status === 403) {
