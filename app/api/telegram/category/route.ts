@@ -23,7 +23,7 @@ async function verifyAuth(req: NextRequest) {
   }
 }
 
-// PUT: 更新圖片的 slug（分類）
+// PUT: 更新圖片的 slug（分類）或重新排序照片
 export async function PUT(req: NextRequest) {
   try {
     const user = await verifyAuth(req);
@@ -35,6 +35,35 @@ export async function PUT(req: NextRequest) {
     }
 
     const body = await req.json();
+    
+    // 如果有 photos 參數，表示要重新排序
+    if (body.photos && body.slug) {
+      const { slug, photos } = body;
+      
+      const db = getAdminDb();
+      const docRef = db.collection('telegram-categories').doc(slug);
+      const doc = await docRef.get();
+      
+      if (!doc.exists) {
+        return NextResponse.json(
+          { error: "Category not found" },
+          { status: 404 }
+        );
+      }
+      
+      // 更新圖片順序
+      await docRef.update({
+        images: photos,
+        updatedAt: new Date().toISOString(),
+      });
+      
+      return NextResponse.json(
+        { success: true, message: "Photos reordered successfully" },
+        { status: 200 }
+      );
+    }
+    
+    // 原本的更新 slug 邏輯
     const { id, slug, variant } = body;
 
     if (!id) {
@@ -189,6 +218,127 @@ export async function GET(req: NextRequest) {
     console.error("Error fetching categories:", error);
     return NextResponse.json(
       { error: "Failed to fetch categories" },
+      { status: 500 }
+    );
+  }
+}
+
+// DELETE: 刪除指定分類中的圖片
+export async function DELETE(req: NextRequest) {
+  try {
+    const user = await verifyAuth(req);
+    if (!user) {
+      return NextResponse.json(
+        { error: "Unauthorized - Please sign in" },
+        { status: 401 }
+      );
+    }
+
+    const searchParams = req.nextUrl.searchParams;
+    const slug = searchParams.get('slug');
+    const photoId = searchParams.get('photoId');
+
+    if (!slug || !photoId) {
+      return NextResponse.json(
+        { error: "Slug and photoId are required" },
+        { status: 400 }
+      );
+    }
+
+    const db = getAdminDb();
+    const docRef = db.collection('telegram-categories').doc(slug);
+    const doc = await docRef.get();
+
+    if (!doc.exists) {
+      return NextResponse.json(
+        { error: "Category not found" },
+        { status: 404 }
+      );
+    }
+
+    const images = doc.data()?.images || [];
+    const updatedImages = images.filter((img: any) => img.id !== photoId);
+
+    if (updatedImages.length === 0) {
+      // 如果沒有圖片了，刪除整個分類
+      await docRef.delete();
+    } else {
+      await docRef.update({
+        images: updatedImages,
+        updatedAt: new Date().toISOString(),
+      });
+    }
+
+    return NextResponse.json(
+      { success: true, message: "Photo deleted successfully" },
+      { status: 200 }
+    );
+  } catch (error) {
+    console.error("Error deleting photo:", error);
+    return NextResponse.json(
+      { error: "Failed to delete photo" },
+      { status: 500 }
+    );
+  }
+}
+
+// PATCH: 更新指定圖片的資訊（alt, url, variant）
+export async function PATCH(req: NextRequest) {
+  try {
+    const user = await verifyAuth(req);
+    if (!user) {
+      return NextResponse.json(
+        { error: "Unauthorized - Please sign in" },
+        { status: 401 }
+      );
+    }
+
+    const body = await req.json();
+    const { slug, photoId, alt, url, variant } = body;
+
+    if (!slug || !photoId) {
+      return NextResponse.json(
+        { error: "Slug and photoId are required" },
+        { status: 400 }
+      );
+    }
+
+    const db = getAdminDb();
+    const docRef = db.collection('telegram-categories').doc(slug);
+    const doc = await docRef.get();
+
+    if (!doc.exists) {
+      return NextResponse.json(
+        { error: "Category not found" },
+        { status: 404 }
+      );
+    }
+
+    const images = doc.data()?.images || [];
+    const updatedImages = images.map((img: any) => {
+      if (img.id === photoId) {
+        const updates: any = { ...img };
+        if (alt !== undefined) updates.alt = alt;
+        if (url !== undefined) updates.url = url;
+        if (variant !== undefined) updates.variant = variant;
+        return updates;
+      }
+      return img;
+    });
+
+    await docRef.update({
+      images: updatedImages,
+      updatedAt: new Date().toISOString(),
+    });
+
+    return NextResponse.json(
+      { success: true, message: "Photo updated successfully" },
+      { status: 200 }
+    );
+  } catch (error) {
+    console.error("Error updating photo:", error);
+    return NextResponse.json(
+      { error: "Failed to update photo" },
       { status: 500 }
     );
   }

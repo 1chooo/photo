@@ -83,15 +83,21 @@ export default function PhotosManagement() {
   };
 
   const handleUpdatePhoto = async (slug: string, photoId: string, url: string, alt: string, variant: 'original' | 'square') => {
+    if (!user) return;
+    
     try {
-      const response = await fetch('/api/photos', {
+      const idToken = await user.getIdToken();
+      const response = await fetch('/api/telegram/category', {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Authorization': `Bearer ${idToken}`,
+          'Content-Type': 'application/json' 
+        },
         body: JSON.stringify({ slug, photoId, url, alt, variant }),
       });
 
       if (response.ok) {
-        mutate('/api/photos'); // SWR revalidation
+        await mutate('/api/telegram/category');
         setEditingPhotoId(null);
         setEditingAlt('');
         setEditingUrl('');
