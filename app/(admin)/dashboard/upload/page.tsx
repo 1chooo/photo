@@ -28,7 +28,7 @@ const fetcher = async (url: string) => {
   const auth = (await import('firebase/auth')).getAuth()
   const user = auth.currentUser
   if (!user) throw new Error('Not authenticated')
-  
+
   const token = await user.getIdToken()
   const res = await fetch(url, {
     headers: {
@@ -51,13 +51,13 @@ export default function TelegramUploadPage() {
   const [failedUploads, setFailedUploads] = useState<FailedUpload[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  // 使用 SWR 從 DB 獲取圖片
+  // Fetch uploaded images using SWR
   const { data, error: fetchError, isLoading } = useSWR<{ images: UploadedImage[] }>(
     user ? '/api/telegram/images' : null,
     fetcher,
     {
       revalidateOnFocus: true,
-      refreshInterval: 30000, // 每 30 秒自動刷新
+      refreshInterval: 30000, // refresh every 30 seconds
     }
   )
 
@@ -67,16 +67,16 @@ export default function TelegramUploadPage() {
     const files = Array.from(e.target.files || [])
     if (files.length === 0) return
 
-    // 驗證所有文件
+    // Validate files
     const maxSize = 10 * 1024 * 1024
     const validFiles: File[] = []
     const errors: string[] = []
 
     files.forEach(file => {
       if (!file.type.startsWith('image/')) {
-        errors.push(`${file.name}: 不是圖片文件`)
+        errors.push(`${file.name}: Invalid file type`)
       } else if (file.size > maxSize) {
-        errors.push(`${file.name}: 超過 10MB`)
+        errors.push(`${file.name}: File size exceeds 10MB`)
       } else {
         validFiles.push(file)
       }
@@ -93,7 +93,7 @@ export default function TelegramUploadPage() {
     setSelectedFiles(validFiles)
     setSuccess(null)
 
-    // 創建所有預覽
+    // Prepare preview URLs
     const previews: string[] = []
     let loadedCount = 0
 
@@ -124,7 +124,7 @@ export default function TelegramUploadPage() {
       const idToken = await user.getIdToken()
       let successCount = 0
 
-      // 逐一上傳每個檔案
+      // Upload files one by one to track progress
       for (let i = 0; i < files.length; i++) {
         const file = files[i]
         setUploadProgress({ current: i + 1, total: files.length })
@@ -146,13 +146,13 @@ export default function TelegramUploadPage() {
           if (!response.ok) {
             // 分類錯誤類型
             let errorType: FailedUpload['errorType'] = 'unknown'
-            let errorMessage = data.error || '上傳失敗'
+            let errorMessage = data.error || 'Upload failed'
 
             if (response.status === 400) {
               errorType = 'validation'
             } else if (response.status === 401 || response.status === 403) {
               errorType = 'server'
-              errorMessage = '認證失敗，請重新登入'
+              errorMessage = 'Authentication error. Please log in again.'
             } else if (response.status === 500) {
               errorType = 'server'
             } else if (errorMessage.includes('Telegram')) {
@@ -169,29 +169,29 @@ export default function TelegramUploadPage() {
             successCount++
           }
         } catch (err) {
-          // 捕獲網絡錯誤或其他異常
+          // Catch network or unexpected errors
           failed.push({
             file,
             fileName: file.name,
-            error: err instanceof Error ? err.message : '網絡錯誤或請求失敗',
+            error: err instanceof Error ? err.message : 'Network error or unexpected error',
             errorType: 'network',
           })
         }
       }
 
-      // 重新驗證 SWR 數據
+      // Refresh uploaded images list
       await mutate('/api/telegram/images')
 
       setFailedUploads(failed)
 
       if (failed.length > 0) {
-        setError(`成功上傳 ${successCount}/${files.length} 張，${failed.length} 張失敗`)
+        setError(`Uploaded ${successCount} out of ${files.length} images. ${failed.length} failed.`)
       } else {
-        setSuccess(`成功上傳 ${successCount} 張照片！`)
+        setSuccess(`Uploaded all ${files.length} images successfully!`)
         setFailedUploads([])
       }
-      
-      // 只清空成功上傳的檔案
+
+      // Clear selected files only if all were uploaded successfully
       if (!filesToUpload && failed.length === 0) {
         setSelectedFiles([])
         setPreviewUrls([])
@@ -209,11 +209,11 @@ export default function TelegramUploadPage() {
 
   const handleRemovePreview = (index?: number) => {
     if (index !== undefined) {
-      // 移除特定檔案
+      // Remove specific file
       setSelectedFiles(prev => prev.filter((_, i) => i !== index))
       setPreviewUrls(prev => prev.filter((_, i) => i !== index))
     } else {
-      // 清空所有
+      // Clear all
       setSelectedFiles([])
       setPreviewUrls([])
       if (fileInputRef.current) {
@@ -235,16 +235,16 @@ export default function TelegramUploadPage() {
 
   const getErrorTypeLabel = (type: FailedUpload['errorType']) => {
     switch (type) {
-      case 'network': return '網絡錯誤'
-      case 'validation': return '檔案驗證失敗'
-      case 'telegram': return 'Telegram API 錯誤'
-      case 'server': return '伺服器錯誤'
-      default: return '未知錯誤'
+      case 'network': return 'Network Error'
+      case 'validation': return 'Validation Error'
+      case 'telegram': return 'Telegram API Error'
+      case 'server': return 'Server Error'
+      default: return 'Unknown Error'
     }
   }
 
   const handleDelete = async (imageId: string) => {
-    if (!confirm('確定要刪除這張照片嗎？')) return
+    if (!confirm('Sure to delete this image?')) return
 
     try {
       const idToken = await user!.getIdToken()
@@ -256,14 +256,14 @@ export default function TelegramUploadPage() {
       })
 
       if (!response.ok) {
-        throw new Error('刪除失敗')
+        throw new Error('Failed to delete image')
       }
 
       await mutate('/api/telegram/images')
-      setSuccess('照片已刪除')
+      setSuccess('Image deleted successfully')
       setTimeout(() => setSuccess(null), 3000)
     } catch (err) {
-      setError(err instanceof Error ? err.message : '刪除失敗')
+      setError(err instanceof Error ? err.message : 'Invalid delete operation')
       setTimeout(() => setError(null), 3000)
     }
   }
@@ -296,247 +296,261 @@ export default function TelegramUploadPage() {
   }
 
   return (
-    <div className="pb-6 sm:pb-10 md:pb-14">
-      <h1 className="font-semibold mb-7 text-rurikon-600">Telegram Upload</h1>
-      
-      <div className="">
-        {/* Upload Section */}
-        <div className="mb-10">
-          <div className="border-2 border-dashed border-rurikon-200 rounded-lg p-8 text-center hover:border-rurikon-400 transition-colors">
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              multiple
-              onChange={handleFileSelect}
-              className="hidden"
-              id="file-upload"
-            />
-            
-            {previewUrls.length === 0 ? (
-              <label
-                htmlFor="file-upload"
-                className="cursor-pointer flex flex-col items-center"
-              >
-                <Upload className="w-12 h-12 text-rurikon-300 mb-4" />
-                <p className="text-rurikon-600 mb-2">
-                  Click to select images or drag and drop here
-                </p>
-                <p className="text-sm text-rurikon-400">
-                  Support JPG, PNG, GIF up to 10MB each
-                </p>
-              </label>
-            ) : (
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-                  {previewUrls.map((url, index) => (
-                    <div key={index} className="relative group">
-                      <img
-                        src={url}
-                        alt={`Preview ${index + 1}`}
-                        className="w-full aspect-square object-cover rounded-lg shadow-lg"
-                      />
+    // Main Container: Fixed height relative to viewport (adjust calculation as needed)
+    <div className="h-[calc(100vh-80px)] w-full overflow-hidden p-4">
+      <div className="flex h-full gap-6">
+        
+        {/* Left Side: Upload & Controls */}
+        <div className="w-1/2 flex flex-col h-full overflow-hidden bg-white rounded-xl shadow-sm border border-rurikon-100">
+          <div className="p-4 border-b border-rurikon-100 shrink-0">
+             <h1 className="font-semibold text-rurikon-600 text-lg">Upload Zone</h1>
+          </div>
+          
+          <div className="flex-1 overflow-y-auto p-6">
+             <div className="border-2 border-dashed border-rurikon-200 rounded-lg p-8 text-center hover:border-rurikon-400 transition-colors">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={handleFileSelect}
+                className="hidden"
+                id="file-upload"
+              />
+
+              {previewUrls.length === 0 ? (
+                <label
+                  htmlFor="file-upload"
+                  className="cursor-pointer flex flex-col items-center"
+                >
+                  <Upload className="w-12 h-12 text-rurikon-300 mb-4" />
+                  <p className="text-rurikon-600 mb-2">
+                    Click to select images or drag and drop here
+                  </p>
+                  <p className="text-sm text-rurikon-400">
+                    Support JPG, PNG, GIF up to 10MB each
+                  </p>
+                </label>
+              ) : (
+                <div className="space-y-4">
+                  {/* Selected Drafts Preview */}
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                    {previewUrls.map((url, index) => (
+                      <div key={index} className="relative group">
+                        <img
+                          src={url}
+                          alt={`Preview ${index + 1}`}
+                          className="w-full aspect-square object-cover rounded-lg shadow-lg"
+                        />
+                        <button
+                          onClick={() => handleRemovePreview(index)}
+                          className="absolute top-2 right-2 bg-rurikon-800 text-white p-1.5 rounded-full hover:bg-rurikon-900 transition-colors opacity-0 group-hover:opacity-100"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                        <div className="absolute bottom-0 left-0 right-0 bg-linear-to-t from-black/60 to-transparent p-2 rounded-b-lg">
+                          <p className="text-xs text-white truncate">{selectedFiles[index]?.name}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  
+                  <div className="flex items-center justify-between text-sm text-rurikon-600">
+                    <p>
+                      Chosen {selectedFiles.length} image{selectedFiles.length > 1 ? 's' : ''}
+                    </p>
+                    <button
+                      onClick={() => handleRemovePreview()}
+                      className="text-rurikon-500 hover:text-rurikon-700 underline"
+                    >
+                      Clear All
+                    </button>
+                  </div>
+                  
+                  {uploadProgress && (
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm text-rurikon-600">
+                        <span>
+                          Uploading...
+                        </span>
+                        <span>{uploadProgress.current} / {uploadProgress.total}</span>
+                      </div>
+                      <div className="w-full bg-rurikon-100 rounded-full h-2">
+                        <div
+                          className="bg-rurikon-600 h-2 rounded-full transition-all duration-300"
+                          style={{ width: `${(uploadProgress.current / uploadProgress.total) * 100}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
+                  
+                  <button
+                    onClick={() => handleUpload()}
+                    disabled={uploading}
+                    className="w-full px-6 py-2 bg-rurikon-600 text-white rounded-lg hover:bg-rurikon-700 disabled:bg-rurikon-300 disabled:cursor-not-allowed transition-colors font-medium"
+                  >
+                    {uploading ? `上傳中... (${uploadProgress?.current || 0}/${uploadProgress?.total || 0})` : `上傳 ${selectedFiles.length} 張到 Telegram`}
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Messages */}
+            {error && (
+              <div className="mt-4 flex items-center gap-2 bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg">
+                <AlertCircle className="w-5 h-5 shrink-0" />
+                <p className="whitespace-pre-wrap">{error}</p>
+              </div>
+            )}
+
+            {success && (
+              <div className="mt-4 flex items-center gap-2 bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-lg">
+                <CheckCircle className="w-5 h-5 shrink-0" />
+                <p>{success}</p>
+              </div>
+            )}
+
+            {/* Failed Uploads Details */}
+            {failedUploads.length > 0 && (
+              <div className="mt-4 bg-red-50 border border-red-200 rounded-lg p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="font-semibold text-red-900 flex items-center gap-2">
+                    <AlertCircle className="w-5 h-5" />
+                    Failed Uploads ({failedUploads.length})
+                  </h3>
+                  <button
+                    onClick={handleRetryFailed}
+                    disabled={uploading}
+                    className="px-3 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700 disabled:bg-red-300 disabled:cursor-not-allowed transition-colors"
+                  >
+                    {uploading ? 'Retrying...' : 'Retry All'}
+                  </button>
+                </div>
+                <div className="space-y-2">
+                  {failedUploads.map((failed, index) => (
+                    <div key={index} className="bg-white border border-red-200 rounded p-3 flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <p className="font-medium text-red-900 truncate">{failed.fileName}</p>
+                          <span className="px-2 py-0.5 text-xs bg-red-100 text-red-700 rounded">
+                            {getErrorTypeLabel(failed.errorType)}
+                          </span>
+                        </div>
+                        <p className="text-sm text-red-700">{failed.error}</p>
+                      </div>
                       <button
-                        onClick={() => handleRemovePreview(index)}
-                        className="absolute top-2 right-2 bg-rurikon-800 text-white p-1.5 rounded-full hover:bg-rurikon-900 transition-colors opacity-0 group-hover:opacity-100"
+                        onClick={() => handleRemoveFailed(index)}
+                        className="text-red-400 hover:text-red-600 transition-colors shrink-0"
+                        title="移除此項"
                       >
-                        <X className="w-3 h-3" />
+                        <X className="w-4 h-4" />
                       </button>
-                      <div className="absolute bottom-0 left-0 right-0 bg-linear-to-t from-black/60 to-transparent p-2 rounded-b-lg">
-                        <p className="text-xs text-white truncate">{selectedFiles[index]?.name}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Right Side: Uploaded History Preview */}
+        <div className="w-1/2 flex flex-col h-full overflow-hidden bg-white rounded-xl shadow-sm border border-rurikon-100">
+           <div className="p-4 border-b border-rurikon-100 shrink-0 flex items-center justify-between">
+              <h2 className="font-semibold text-rurikon-600 flex items-center gap-2">
+                <ImageIcon className="w-5 h-5" />
+                Uploaded History
+              </h2>
+              <span className="text-sm text-rurikon-400">
+                {uploadedImages.length} items
+              </span>
+           </div>
+
+           <div className="flex-1 overflow-y-auto p-6">
+              {isLoading && (
+                <div className="text-center py-8 text-rurikon-400">
+                  Loading uploaded images...
+                </div>
+              )}
+
+              {fetchError && (
+                <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg">
+                  Cannot load uploaded images: {fetchError.message}
+                </div>
+              )}
+
+              {!isLoading && !fetchError && uploadedImages.length > 0 && (
+                <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                  {uploadedImages.map((image) => (
+                    <div
+                      key={image.id}
+                      className="border border-rurikon-200 rounded-lg p-4 hover:border-rurikon-400 transition-colors bg-white"
+                    >
+                      <div className="flex flex-col gap-4">
+                        <div className="relative shrink-0">
+                          <img
+                            src={image.url}
+                            alt={image.file_name}
+                            className="w-full h-48 object-cover rounded-lg bg-gray-50"
+                          />
+                          <button
+                            onClick={() => handleDelete(image.id)}
+                            className="absolute top-2 right-2 bg-red-500 text-white p-2 rounded-full hover:bg-red-600 transition-colors shadow-lg opacity-90 hover:opacity-100"
+                            title="刪除照片"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                        <div className="flex-1 space-y-2 text-sm">
+                          <div>
+                            <span className="text-rurikon-400 block text-xs uppercase tracking-wide">File Name</span>
+                            <span className="text-rurikon-600 font-medium truncate block">{image.file_name}</span>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                                <span className="text-rurikon-400 block text-xs uppercase tracking-wide">Size</span>
+                                <span className="text-rurikon-600">{formatFileSize(image.file_size)}</span>
+                            </div>
+                            <div>
+                                <span className="text-rurikon-400 block text-xs uppercase tracking-wide">Date</span>
+                                <span className="text-rurikon-600 truncate">{formatDate(image.uploaded_at).split(' ')[0]}</span>
+                            </div>
+                          </div>
+                          
+                          <div>
+                            <span className="text-rurikon-400 block text-xs uppercase tracking-wide">URL</span>
+                            <div className="flex items-center gap-2 mt-1">
+                                <a
+                                  href={image.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-rurikon-500 hover:text-rurikon-700 underline truncate flex-1"
+                                >
+                                  Link
+                                </a>
+                                <button
+                                  onClick={() => handleCopyUrl(image.url)}
+                                  className="shrink-0 inline-flex items-center gap-1 text-xs bg-rurikon-50 hover:bg-rurikon-100 text-rurikon-600 px-2 py-1 rounded transition-colors border border-rurikon-200"
+                                >
+                                  <Copy className="w-3 h-3" />
+                                  {copySuccess === image.url ? 'Copied!' : 'Copy'}
+                                </button>
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   ))}
                 </div>
-                <div className="flex items-center justify-between text-sm text-rurikon-600">
-                  <p>已選擇 {selectedFiles.length} 張圖片</p>
-                  <button
-                    onClick={() => handleRemovePreview()}
-                    className="text-rurikon-500 hover:text-rurikon-700 underline"
-                  >
-                    清空全部
-                  </button>
+              )}
+
+              {!isLoading && !fetchError && uploadedImages.length === 0 && (
+                <div className="h-full flex flex-col items-center justify-center text-rurikon-300">
+                  <ImageIcon className="w-16 h-16 mb-4 opacity-50" />
+                  <p>No uploaded images yet.</p>
                 </div>
-                {uploadProgress && (
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm text-rurikon-600">
-                      <span>上傳進度</span>
-                      <span>{uploadProgress.current} / {uploadProgress.total}</span>
-                    </div>
-                    <div className="w-full bg-rurikon-100 rounded-full h-2">
-                      <div 
-                        className="bg-rurikon-600 h-2 rounded-full transition-all duration-300"
-                        style={{ width: `${(uploadProgress.current / uploadProgress.total) * 100}%` }}
-                      />
-                    </div>
-                  </div>
-                )}
-                <button
-                  onClick={() => handleUpload()}
-                  disabled={uploading}
-                  className="w-full px-6 py-2 bg-rurikon-600 text-white rounded-lg hover:bg-rurikon-700 disabled:bg-rurikon-300 disabled:cursor-not-allowed transition-colors font-medium"
-                >
-                  {uploading ? `上傳中... (${uploadProgress?.current || 0}/${uploadProgress?.total || 0})` : `上傳 ${selectedFiles.length} 張到 Telegram`}
-                </button>
-              </div>
-            )}
-          </div>
-
-          {/* Messages */}
-          {error && (
-            <div className="mt-4 flex items-center gap-2 bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg">
-              <AlertCircle className="w-5 h-5 shrink-0" />
-              <p>{error}</p>
-            </div>
-          )}
-
-          {success && (
-            <div className="mt-4 flex items-center gap-2 bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-lg">
-              <CheckCircle className="w-5 h-5 shrink-0" />
-              <p>{success}</p>
-            </div>
-          )}
-
-          {/* Failed Uploads Details */}
-          {failedUploads.length > 0 && (
-            <div className="mt-4 bg-red-50 border border-red-200 rounded-lg p-4">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="font-semibold text-red-900 flex items-center gap-2">
-                  <AlertCircle className="w-5 h-5" />
-                  上傳失敗的檔案 ({failedUploads.length})
-                </h3>
-                <button
-                  onClick={handleRetryFailed}
-                  disabled={uploading}
-                  className="px-3 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700 disabled:bg-red-300 disabled:cursor-not-allowed transition-colors"
-                >
-                  {uploading ? '重試中...' : '重試全部'}
-                </button>
-              </div>
-              <div className="space-y-2">
-                {failedUploads.map((failed, index) => (
-                  <div key={index} className="bg-white border border-red-200 rounded p-3 flex items-start justify-between gap-3">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <p className="font-medium text-red-900 truncate">{failed.fileName}</p>
-                        <span className="px-2 py-0.5 text-xs bg-red-100 text-red-700 rounded">
-                          {getErrorTypeLabel(failed.errorType)}
-                        </span>
-                      </div>
-                      <p className="text-sm text-red-700">{failed.error}</p>
-                    </div>
-                    <button
-                      onClick={() => handleRemoveFailed(index)}
-                      className="text-red-400 hover:text-red-600 transition-colors shrink-0"
-                      title="移除此項"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+              )}
+           </div>
         </div>
-
-        {/* Uploaded Images History */}
-        {isLoading && (
-          <div className="text-center py-8 text-rurikon-400">
-            載入中...
-          </div>
-        )}
-
-        {fetchError && (
-          <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg">
-            無法載入圖片列表，請重新整理頁面
-          </div>
-        )}
-
-        {!isLoading && !fetchError && uploadedImages.length > 0 && (
-          <div>
-            <h2 className="font-semibold mb-4 text-rurikon-600 flex items-center gap-2">
-              <ImageIcon className="w-5 h-5" />
-              已上傳的照片 ({uploadedImages.length})
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6 gap-4">
-              {uploadedImages.map((image) => (
-                <div
-                  key={image.id}
-                  className="border border-rurikon-200 rounded-lg p-4 hover:border-rurikon-400 transition-colors"
-                >
-                  <div className="flex flex-col gap-4">
-                    <div className="relative shrink-0">
-                      <img
-                        src={image.url}
-                        alt={image.file_name}
-                        className="w-full h-48 object-cover rounded-lg"
-                      />
-                      <button
-                        onClick={() => handleDelete(image.id)}
-                        className="absolute top-2 right-2 bg-red-500 text-white p-2 rounded-full hover:bg-red-600 transition-colors shadow-lg"
-                        title="刪除照片"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                    <div className="flex-1 space-y-2 text-sm">
-                      <div>
-                        <span className="text-rurikon-400">檔案名稱：</span>
-                        <span className="text-rurikon-600 font-medium">{image.file_name}</span>
-                      </div>
-                      <div>
-                        <span className="text-rurikon-400">大小：</span>
-                        <span className="text-rurikon-600">{formatFileSize(image.file_size)}</span>
-                      </div>
-                      <div>
-                        <span className="text-rurikon-400">File ID：</span>
-                        <code className="text-rurikon-600 bg-rurikon-50 px-2 py-1 rounded text-xs break-all">
-                          {image.file_id}
-                        </code>
-                      </div>
-                      {image.uploaded_by && (
-                        <div>
-                          <span className="text-rurikon-400">上傳者：</span>
-                          <span className="text-rurikon-600">{image.uploaded_by}</span>
-                        </div>
-                      )}
-                      <div>
-                        <span className="text-rurikon-400">上傳時間：</span>
-                        <span className="text-rurikon-600">{formatDate(image.uploaded_at)}</span>
-                      </div>
-                      <div className="flex items-start gap-2">
-                        <span className="text-rurikon-400 shrink-0">URL：</span>
-                        <div className="flex-1 min-w-0">
-                          <a
-                            href={image.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-rurikon-500 hover:text-rurikon-700 underline break-all block"
-                          >
-                            {image.url}
-                          </a>
-                          <button
-                            onClick={() => handleCopyUrl(image.url)}
-                            className="mt-1 inline-flex items-center gap-1 text-xs text-rurikon-500 hover:text-rurikon-700 transition-colors"
-                          >
-                            <Copy className="w-3 h-3" />
-                            {copySuccess === image.url ? '已複製！' : '複製 URL'}
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {!isLoading && !fetchError && uploadedImages.length === 0 && (
-          <div className="text-center py-8 text-rurikon-400">
-            尚未上傳任何照片
-          </div>
-        )}
       </div>
     </div>
   )
