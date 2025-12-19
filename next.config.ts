@@ -39,6 +39,12 @@ export default withMDX()({
         port: '',
         pathname: '/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'api.telegram.org',
+        port: '',
+        pathname: '/**',
+      },
     ],
     minimumCacheTTL: 31536000, // 1 year cache for images
   },

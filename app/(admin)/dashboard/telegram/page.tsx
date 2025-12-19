@@ -34,9 +34,10 @@ const fetcher = async (url: string) => {
 
 export default function TelegramUploadPage() {
   const { user } = useAuth()
-  const [selectedFile, setSelectedFile] = useState<File | null>(null)
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([])
+  const [previewUrls, setPreviewUrls] = useState<string[]>([])
   const [uploading, setUploading] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState<{ current: number; total: number } | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [copySuccess, setCopySuccess] = useState<string | null>(null)
@@ -55,71 +56,106 @@ export default function TelegramUploadPage() {
   const uploadedImages = data?.images || []
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
+    const files = Array.from(e.target.files || [])
+    if (files.length === 0) return
 
-    // 驗證文件類型
-    if (!file.type.startsWith('image/')) {
-      setError('請選擇圖片文件')
-      return
-    }
-
-    // 驗證文件大小 (10MB)
+    // 驗證所有文件
     const maxSize = 10 * 1024 * 1024
-    if (file.size > maxSize) {
-      setError('文件大小不能超過 10MB')
-      return
+    const validFiles: File[] = []
+    const errors: string[] = []
+
+    files.forEach(file => {
+      if (!file.type.startsWith('image/')) {
+        errors.push(`${file.name}: 不是圖片文件`)
+      } else if (file.size > maxSize) {
+        errors.push(`${file.name}: 超過 10MB`)
+      } else {
+        validFiles.push(file)
+      }
+    })
+
+    if (errors.length > 0) {
+      setError(errors.join('\n'))
+    } else {
+      setError(null)
     }
 
-    setSelectedFile(file)
-    setError(null)
+    if (validFiles.length === 0) return
+
+    setSelectedFiles(validFiles)
     setSuccess(null)
 
-    // 創建預覽
-    const reader = new FileReader()
-    reader.onloadend = () => {
-      setPreviewUrl(reader.result as string)
-    }
-    reader.readAsDataURL(file)
+    // 創建所有預覽
+    const previews: string[] = []
+    let loadedCount = 0
+
+    validFiles.forEach(file => {
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        previews.push(reader.result as string)
+        loadedCount++
+        if (loadedCount === validFiles.length) {
+          setPreviewUrls(previews)
+        }
+      }
+      reader.readAsDataURL(file)
+    })
   }
 
   const handleUpload = async () => {
-    if (!selectedFile || !user) return
+    if (selectedFiles.length === 0 || !user) return
 
     setUploading(true)
     setError(null)
     setSuccess(null)
+    setUploadProgress({ current: 0, total: selectedFiles.length })
 
     try {
-      // 獲取 Firebase ID Token
       const idToken = await user.getIdToken()
+      const errors: string[] = []
+      let successCount = 0
 
-      // 準備 FormData
-      const formData = new FormData()
-      formData.append('file', selectedFile)
+      // 逐一上傳每個檔案
+      for (let i = 0; i < selectedFiles.length; i++) {
+        const file = selectedFiles[i]
+        setUploadProgress({ current: i + 1, total: selectedFiles.length })
 
-      // 上傳到 API
-      const response = await fetch('/api/telegram/upload', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${idToken}`,
-        },
-        body: formData,
-      })
+        try {
+          const formData = new FormData()
+          formData.append('file', file)
 
-      const data = await response.json()
+          const response = await fetch('/api/telegram/upload', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${idToken}`,
+            },
+            body: formData,
+          })
 
-      if (!response.ok) {
-        throw new Error(data.error || '上傳失敗')
+          const data = await response.json()
+
+          if (!response.ok) {
+            throw new Error(data.error || '上傳失敗')
+          }
+
+          successCount++
+        } catch (err) {
+          errors.push(`${file.name}: ${err instanceof Error ? err.message : '上傳失敗'}`)
+        }
       }
 
       // 重新驗證 SWR 數據
       await mutate('/api/telegram/images')
-      setSuccess('照片上傳成功！')
+
+      if (errors.length > 0) {
+        setError(`成功上傳 ${successCount}/${selectedFiles.length} 張\n${errors.join('\n')}`)
+      } else {
+        setSuccess(`成功上傳 ${successCount} 張照片！`)
+      }
       
       // 清空選擇
-      setSelectedFile(null)
-      setPreviewUrl(null)
+      setSelectedFiles([])
+      setPreviewUrls([])
       if (fileInputRef.current) {
         fileInputRef.current.value = ''
       }
@@ -127,14 +163,22 @@ export default function TelegramUploadPage() {
       setError(err instanceof Error ? err.message : '上傳失敗，請重試')
     } finally {
       setUploading(false)
+      setUploadProgress(null)
     }
   }
 
-  const handleRemovePreview = () => {
-    setSelectedFile(null)
-    setPreviewUrl(null)
-    if (fileInputRef.current) {
-      fileInputRef.current.value = ''
+  const handleRemovePreview = (index?: number) => {
+    if (index !== undefined) {
+      // 移除特定檔案
+      setSelectedFiles(prev => prev.filter((_, i) => i !== index))
+      setPreviewUrls(prev => prev.filter((_, i) => i !== index))
+    } else {
+      // 清空所有
+      setSelectedFiles([])
+      setPreviewUrls([])
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
     }
   }
 
@@ -194,7 +238,7 @@ export default function TelegramUploadPage() {
     <div className="pb-6 sm:pb-10 md:pb-14">
       <h1 className="font-semibold mb-7 text-rurikon-600">Telegram Upload</h1>
       
-      <div className="max-w-3xl">
+      <div className="">
         {/* Upload Section */}
         <div className="mb-10">
           <div className="border-2 border-dashed border-rurikon-200 rounded-lg p-8 text-center hover:border-rurikon-400 transition-colors">
@@ -202,12 +246,13 @@ export default function TelegramUploadPage() {
               ref={fileInputRef}
               type="file"
               accept="image/*"
+              multiple
               onChange={handleFileSelect}
               className="hidden"
               id="file-upload"
             />
             
-            {!previewUrl ? (
+            {previewUrls.length === 0 ? (
               <label
                 htmlFor="file-upload"
                 className="cursor-pointer flex flex-col items-center"
@@ -217,34 +262,60 @@ export default function TelegramUploadPage() {
                   點擊選擇圖片或拖放到這裡
                 </p>
                 <p className="text-sm text-rurikon-400">
-                  支持 JPG, PNG, GIF 等格式，最大 10MB
+                  支持多選，JPG, PNG, GIF 等格式，單檔最大 10MB
                 </p>
               </label>
             ) : (
               <div className="space-y-4">
-                <div className="relative inline-block">
-                  <img
-                    src={previewUrl}
-                    alt="Preview"
-                    className="max-h-64 rounded-lg shadow-lg"
-                  />
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                  {previewUrls.map((url, index) => (
+                    <div key={index} className="relative group">
+                      <img
+                        src={url}
+                        alt={`Preview ${index + 1}`}
+                        className="w-full aspect-square object-cover rounded-lg shadow-lg"
+                      />
+                      <button
+                        onClick={() => handleRemovePreview(index)}
+                        className="absolute top-2 right-2 bg-rurikon-800 text-white p-1.5 rounded-full hover:bg-rurikon-900 transition-colors opacity-0 group-hover:opacity-100"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-2 rounded-b-lg">
+                        <p className="text-xs text-white truncate">{selectedFiles[index]?.name}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="flex items-center justify-between text-sm text-rurikon-600">
+                  <p>已選擇 {selectedFiles.length} 張圖片</p>
                   <button
-                    onClick={handleRemovePreview}
-                    className="absolute top-2 right-2 bg-rurikon-800 text-white p-2 rounded-full hover:bg-rurikon-900 transition-colors"
+                    onClick={() => handleRemovePreview()}
+                    className="text-rurikon-500 hover:text-rurikon-700 underline"
                   >
-                    <X className="w-4 h-4" />
+                    清空全部
                   </button>
                 </div>
-                <div className="text-sm text-rurikon-600">
-                  <p className="font-medium">{selectedFile?.name}</p>
-                  <p className="text-rurikon-400">{formatFileSize(selectedFile?.size || 0)}</p>
-                </div>
+                {uploadProgress && (
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm text-rurikon-600">
+                      <span>上傳進度</span>
+                      <span>{uploadProgress.current} / {uploadProgress.total}</span>
+                    </div>
+                    <div className="w-full bg-rurikon-100 rounded-full h-2">
+                      <div 
+                        className="bg-rurikon-600 h-2 rounded-full transition-all duration-300"
+                        style={{ width: `${(uploadProgress.current / uploadProgress.total) * 100}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
                 <button
                   onClick={handleUpload}
                   disabled={uploading}
-                  className="px-6 py-2 bg-rurikon-600 text-white rounded-lg hover:bg-rurikon-700 disabled:bg-rurikon-300 disabled:cursor-not-allowed transition-colors font-medium"
+                  className="w-full px-6 py-2 bg-rurikon-600 text-white rounded-lg hover:bg-rurikon-700 disabled:bg-rurikon-300 disabled:cursor-not-allowed transition-colors font-medium"
                 >
-                  {uploading ? '上傳中...' : '上傳到 Telegram'}
+                  {uploading ? `上傳中... (${uploadProgress?.current || 0}/${uploadProgress?.total || 0})` : `上傳 ${selectedFiles.length} 張到 Telegram`}
                 </button>
               </div>
             )}
@@ -253,14 +324,14 @@ export default function TelegramUploadPage() {
           {/* Messages */}
           {error && (
             <div className="mt-4 flex items-center gap-2 bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg">
-              <AlertCircle className="w-5 h-5 flex-shrink-0" />
+              <AlertCircle className="w-5 h-5 shrink-0" />
               <p>{error}</p>
             </div>
           )}
 
           {success && (
             <div className="mt-4 flex items-center gap-2 bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-lg">
-              <CheckCircle className="w-5 h-5 flex-shrink-0" />
+              <CheckCircle className="w-5 h-5 shrink-0" />
               <p>{success}</p>
             </div>
           )}
@@ -285,14 +356,14 @@ export default function TelegramUploadPage() {
               <ImageIcon className="w-5 h-5" />
               已上傳的照片 ({uploadedImages.length})
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6 gap-4">
               {uploadedImages.map((image) => (
                 <div
                   key={image.id}
                   className="border border-rurikon-200 rounded-lg p-4 hover:border-rurikon-400 transition-colors"
                 >
                   <div className="flex flex-col gap-4">
-                    <div className="relative flex-shrink-0">
+                    <div className="relative shrink-0">
                       <img
                         src={image.url}
                         alt={image.file_name}
@@ -332,7 +403,7 @@ export default function TelegramUploadPage() {
                         <span className="text-rurikon-600">{formatDate(image.uploaded_at)}</span>
                       </div>
                       <div className="flex items-start gap-2">
-                        <span className="text-rurikon-400 flex-shrink-0">URL：</span>
+                        <span className="text-rurikon-400 shrink-0">URL：</span>
                         <div className="flex-1 min-w-0">
                           <a
                             href={image.url}

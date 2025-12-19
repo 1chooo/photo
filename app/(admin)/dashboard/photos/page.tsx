@@ -1,40 +1,54 @@
 'use client';
 
+import { useAuth } from '@/lib/firebase/useAuth';
 import { useState } from 'react';
 import useSWR, { mutate } from 'swr';
 
 interface Photo {
   id: string;
   url: string;
+  file_name: string;
   alt?: string;
-  variant?: 'original' | 'square';
-  order: number;
-  createdAt: string;
+  variant: 'original' | 'square';
+  uploaded_at: string;
 }
 
 interface Gallery {
   slug: string;
-  photos: Photo[];
+  images: Photo[];
+  createdAt: string;
+  updatedAt: string;
 }
 
-const fetcher = (url: string) => fetch(url).then((res) => res.json());
+const fetcher = async (url: string) => {
+  const auth = (await import('firebase/auth')).getAuth();
+  const user = auth.currentUser;
+  if (!user) throw new Error('Not authenticated');
+  
+  const token = await user.getIdToken();
+  const res = await fetch(url, {
+    headers: {
+      'Authorization': `Bearer ${token}`
+    }
+  });
+  if (!res.ok) throw new Error('Failed to fetch');
+  return res.json();
+};
 
 export default function PhotosManagement() {
-  const { data, error, isLoading } = useSWR<{ galleries: Gallery[] }>(
-    '/api/photos',
+  const { user } = useAuth();
+  const { data, error, isLoading } = useSWR<{ categories: Gallery[] }>(
+    user ? '/api/telegram/category' : null,
     fetcher,
     {
       revalidateOnFocus: true,
       revalidateOnReconnect: true,
+      refreshInterval: 30000, // 每 30 秒自動刷新
     }
   );
 
-  const galleries = data?.galleries || [];
+  const galleries = data?.categories || [];
   const [selectedSlug, setSelectedSlug] = useState<string>('');
-  const [newSlug, setNewSlug] = useState<string>('');
-  const [newPhotoUrl, setNewPhotoUrl] = useState<string>('');
-  const [newPhotoAlt, setNewPhotoAlt] = useState<string>('');
-  const [newPhotoVariant, setNewPhotoVariant] = useState<'original' | 'square'>('original');
   const [loading, setLoading] = useState(false);
   const [draggedPhoto, setDraggedPhoto] = useState<string | null>(null);
   const [editingPhotoId, setEditingPhotoId] = useState<string | null>(null);
@@ -44,57 +58,21 @@ export default function PhotosManagement() {
   const [editingSlug, setEditingSlug] = useState<string | null>(null);
   const [newSlugName, setNewSlugName] = useState<string>('');
 
-  const handleAddPhoto = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newPhotoUrl.trim()) return;
-
-    const slugToUse = newSlug.trim() || selectedSlug;
-    if (!slugToUse) {
-      alert('Please select or enter a slug');
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const response = await fetch('/api/photos', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          slug: slugToUse,
-          url: newPhotoUrl.trim(),
-          alt: newPhotoAlt.trim(),
-          variant: newPhotoVariant,
-        }),
-      });
-
-      if (response.ok) {
-        setNewPhotoUrl('');
-        setNewPhotoAlt('');
-        setNewPhotoVariant('original');
-        setNewSlug('');
-        mutate('/api/photos'); // SWR revalidation
-        setSelectedSlug(slugToUse);
-      } else {
-        alert('Upload failed');
-      }
-    } catch (error) {
-      console.error('Error adding photo:', error);
-      alert('Upload failed');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleDeletePhoto = async (slug: string, photoId: string) => {
     if (!confirm('Are you sure you want to delete this photo?')) return;
+    if (!user) return;
 
     try {
-      const response = await fetch(`/api/photos?slug=${slug}&photoId=${photoId}`, {
+      const idToken = await user.getIdToken();
+      const response = await fetch(`/api/telegram/category?slug=${slug}&photoId=${photoId}`, {
         method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${idToken}`,
+        },
       });
 
       if (response.ok) {
-        mutate('/api/photos'); // SWR revalidation
+        await mutate('/api/telegram/category');
       } else {
         alert('Delete failed');
       }
@@ -139,10 +117,12 @@ export default function PhotosManagement() {
     e.preventDefault();
     if (!draggedPhoto || draggedPhoto === targetPhotoId) return;
 
+    if (!user) return;
+
     const gallery = galleries.find(g => g.slug === slug);
     if (!gallery) return;
 
-    const photos = [...gallery.photos];
+    const photos = [...gallery.images];
     const draggedIndex = photos.findIndex(p => p.id === draggedPhoto);
     const targetIndex = photos.findIndex(p => p.id === targetPhotoId);
 
@@ -150,14 +130,18 @@ export default function PhotosManagement() {
     photos.splice(targetIndex, 0, removed);
 
     try {
-      const response = await fetch('/api/photos', {
+      const idToken = await user.getIdToken();
+      const response = await fetch('/api/telegram/category', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Authorization': `Bearer ${idToken}`,
+          'Content-Type': 'application/json'
+        },
         body: JSON.stringify({ slug, photos }),
       });
 
       if (response.ok) {
-        mutate('/api/photos'); // SWR revalidation
+        await mutate('/api/telegram/category');
       }
     } catch (error) {
       console.error('Error reordering photos:', error);
@@ -179,16 +163,22 @@ export default function PhotosManagement() {
 
     if (!confirm(`Rename "${oldSlug}" to "${newSlug}"?`)) return;
 
+    if (!user) return;
+
     setLoading(true);
     try {
-      const response = await fetch('/api/photos/rename', {
+      const idToken = await user.getIdToken();
+      const response = await fetch('/api/telegram/category/rename', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Authorization': `Bearer ${idToken}`,
+          'Content-Type': 'application/json'
+        },
         body: JSON.stringify({ oldSlug, newSlug }),
       });
 
       if (response.ok) {
-        mutate('/api/photos'); // SWR revalidation
+        await mutate('/api/telegram/category');
         setSelectedSlug(newSlug);
         setEditingSlug(null);
         setNewSlugName('');
@@ -206,6 +196,12 @@ export default function PhotosManagement() {
 
   const currentGallery = galleries.find(g => g.slug === selectedSlug);
 
+  if (!user) {
+    return (
+      <div className="mt-7 text-rurikon-600">Please sign in to manage photos.</div>
+    );
+  }
+
   if (error) {
     return (
       <div className="mt-7 text-rurikon-600">Failed to load galleries. Please try again.</div>
@@ -222,100 +218,6 @@ export default function PhotosManagement() {
             <p className="text-rurikon-600">Loading galleries...</p>
           </div>
         )}
-
-        {/* Add Photo Form */}
-        <div className="mt-7 bg-white rounded-lg border border-rurikon-100 p-6">
-          <h2 className="font-semibold mb-7 text-rurikon-600">Add Photo</h2>
-          <form onSubmit={handleAddPhoto} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm text-rurikon-600 mb-2 lowercase">
-                  Select Existing Slug
-                </label>
-                <select
-                  value={selectedSlug}
-                  onChange={(e) => {
-                    setSelectedSlug(e.target.value);
-                    setNewSlug('');
-                  }}
-                  className="w-full px-3 py-2 border border-rurikon-200 rounded-md focus:ring-2 focus:ring-rurikon-400 focus:border-rurikon-400 text-rurikon-600"
-                >
-                  <option value="">-- Select Slug --</option>
-                  {galleries.map(gallery => (
-                    <option key={gallery.slug} value={gallery.slug}>
-                      {gallery.slug} ({gallery.photos.length} photos)
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm text-rurikon-600 mb-2 lowercase">
-                  Or Enter New Slug
-                </label>
-                <input
-                  type="text"
-                  value={newSlug}
-                  onChange={(e) => {
-                    setNewSlug(e.target.value);
-                    if (e.target.value) setSelectedSlug('');
-                  }}
-                  placeholder="e.g.: dtla, jioufen"
-                  className="w-full px-3 py-2 border border-rurikon-200 rounded-md focus:ring-2 focus:ring-rurikon-400 focus:border-rurikon-400 text-rurikon-600"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm text-rurikon-600 mb-2 lowercase">
-                Photo URL
-              </label>
-              <input
-                type="url"
-                value={newPhotoUrl}
-                onChange={(e) => setNewPhotoUrl(e.target.value)}
-                placeholder="https://example.com/photo.jpg"
-                required
-                className="w-full px-3 py-2 border border-rurikon-200 rounded-md focus:ring-2 focus:ring-rurikon-400 focus:border-rurikon-400 text-rurikon-600"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm text-rurikon-600 mb-2 lowercase">
-                Alt Text (Optional)
-              </label>
-              <input
-                type="text"
-                value={newPhotoAlt}
-                onChange={(e) => setNewPhotoAlt(e.target.value)}
-                placeholder="Describe the photo for accessibility"
-                className="w-full px-3 py-2 border border-rurikon-200 rounded-md focus:ring-2 focus:ring-rurikon-400 focus:border-rurikon-400 text-rurikon-600"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm text-rurikon-600 mb-2 lowercase">
-                Variant
-              </label>
-              <select
-                value={newPhotoVariant}
-                onChange={(e) => setNewPhotoVariant(e.target.value as 'original' | 'square')}
-                className="w-full px-3 py-2 border border-rurikon-200 rounded-md focus:ring-2 focus:ring-rurikon-400 focus:border-rurikon-400 text-rurikon-600"
-              >
-                <option value="original">Original (Default)</option>
-                <option value="square">Square</option>
-              </select>
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-rurikon-600 text-white py-2 px-4 rounded-md hover:bg-rurikon-700 disabled:bg-rurikon-200 disabled:cursor-not-allowed transition-colors lowercase"
-            >
-              {loading ? 'Uploading...' : 'Add Photo'}
-            </button>
-          </form>
-        </div>
 
         {/* Gallery List */}
         <div className="mt-7 bg-white rounded-lg border border-rurikon-100 p-6">
@@ -363,7 +265,7 @@ export default function PhotosManagement() {
                     >
                       <span className="font-semibold">{gallery.slug}</span>
                       <span className="ml-2 text-sm text-rurikon-400">
-                        ({gallery.photos.length} photos)
+                        ({gallery.images.length} photos)
                       </span>
                     </button>
                     <button
@@ -395,13 +297,11 @@ export default function PhotosManagement() {
                 </span>
               </h3>
               
-              {currentGallery.photos.length === 0 ? (
+              {currentGallery.images.length === 0 ? (
                 <p className="text-rurikon-400 text-center py-8">No photos in this gallery yet</p>
               ) : (
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                  {currentGallery.photos
-                    .sort((a, b) => a.order - b.order)
-                    .map((photo) => (
+                  {currentGallery.images.map((photo, index) => (
                       <div
                         key={photo.id}
                         draggable
@@ -413,11 +313,11 @@ export default function PhotosManagement() {
                         <div className="aspect-square relative">
                           <img
                             src={photo.url}
-                            alt={photo.alt || `Photo ${photo.order + 1}`}
+                            alt={photo.alt || `Photo ${index + 1}`}
                             className="w-full h-full object-cover"
                           />
                           <div className="absolute top-2 left-2 bg-black bg-opacity-60 text-white text-xs px-2 py-1 rounded">
-                            #{photo.order + 1}
+                            #{index + 1}
                           </div>
                           <button
                             onClick={() => handleDeletePhoto(currentGallery.slug, photo.id)}
