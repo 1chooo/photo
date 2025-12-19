@@ -1,10 +1,8 @@
 'use client';
 
-import { BlurFade } from '@/components/magicui/blur-fade';
 import { GalleryImage, GalleryLayout } from '@/types/gallery';
-import { getBlurDataURL } from '@/lib/blur-placeholder';
 import Image from 'next/image';
-import { useMemo, useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 
 interface Photo {
   id: string;
@@ -24,51 +22,103 @@ interface GalleryProps {
   images?: GalleryImage[];
   layout?: GalleryLayout;
   fetchFromApi?: boolean; // 是否從 API 獲取數據
+  columns?: 1 | 2 | 3 | 4; // Column configuration
 }
 
 interface GalleryItemProps {
   image: GalleryImage;
-  index: number;
 }
 
-function GalleryItem({ image, index }: GalleryItemProps) {
+function GalleryItem({ image }: GalleryItemProps) {
+  const [aspectRatio, setAspectRatio] = useState<string>('aspect-square');
   const [isLoaded, setIsLoaded] = useState(false);
-  
-  // Use actual image dimensions if available, otherwise default to landscape
-  const width = image.width || 800;
-  const height = image.height || 600;
-  
+
+  // If width and height are provided, calculate aspect ratio
+  if (image.width && image.height && !isLoaded) {
+    const isPortrait = image.height > image.width;
+    const ratio = isPortrait ? 'aspect-[2/3]' : 'aspect-[3/2]';
+    if (aspectRatio !== ratio) {
+      setAspectRatio(ratio);
+      setIsLoaded(true);
+    }
+  }
+
+  const handleLoadingComplete = (img: HTMLImageElement) => {
+    // Determine orientation from the loaded image
+    const isPortrait = img.naturalHeight > img.naturalWidth;
+    const ratio = isPortrait ? 'aspect-[2/3]' : 'aspect-[3/2]';
+    setAspectRatio(ratio);
+    setIsLoaded(true);
+  };
+
   // Use proxy URL to hide original photo URL
-  const proxySrc = `/api/homepage/image/${image.id}`;
+  const proxySrc = image.id ? `/api/homepage/image/${image.id}` : image.src;
   
   return (
-    <BlurFade delay={0.25 + index * 0.05} inView>
-      <Image
-        className={`mb-4 w-full object-contain transition-all duration-700 hover:scale-105 ${
-          isLoaded ? 'opacity-100' : 'opacity-20'
-        }`}
-        src={proxySrc}
-        alt={image.alt}
-        loading="lazy"
-        width={width}
-        height={height}
-        quality={80}
-        placeholder="blur"
-        blurDataURL={getBlurDataURL(width, height)}
-        onLoad={() => setIsLoaded(true)}
-      />
-    </BlurFade>
+    <div className="overflow-hidden h-full w-full">
+      <div className={`block h-full w-full relative ${aspectRatio} transition-all duration-300`}>
+        <Image
+          alt={image.alt}
+          className="object-cover object-center transition duration-500 transform hover:scale-105"
+          src={proxySrc}
+          fill
+          sizes="(max-width: 768px) 100vw, 50vw"
+          onLoad={(e) => handleLoadingComplete(e.currentTarget)}
+        />
+      </div>
+    </div>
   );
 }
 
-export default function Gallery({ images: externalImages, fetchFromApi = false }: GalleryProps) {
-  const [isMounted, setIsMounted] = useState(false);
+// Get gallery layout based on column count
+const getGalleryLayout = (columns: 1 | 2 | 3 | 4): GalleryLayout => {
+  switch (columns) {
+    case 1:
+      return {
+        columns: [
+          [{ size: 'full' }],
+          [{ size: 'full' }],
+          [{ size: 'full' }],
+          [{ size: 'full' }],
+        ],
+      };
+    case 2:
+      return {
+        columns: [
+          [{ size: 'full' }],
+          [{ size: 'full' }],
+        ],
+      };
+    case 3:
+      return {
+        columns: [
+          [{ size: 'half' }, { size: 'half' }, { size: 'half' }, { size: 'half' }, { size: 'full' }],
+          [{ size: 'full' }, { size: 'half' }, { size: 'half' }, { size: 'half' }, { size: 'half' }],
+          [{ size: 'half' }, { size: 'half' }, { size: 'half' }, { size: 'half' }, { size: 'full' }],
+          [{ size: 'full' }, { size: 'half' }, { size: 'half' }, { size: 'half' }, { size: 'half' }],
+        ],
+      };
+    case 4:
+    default:
+      return {
+        columns: [
+          [{ size: 'half' }, { size: 'half' }, { size: 'half' }, { size: 'half' }, { size: 'full' }],
+          [{ size: 'full' }, { size: 'half' }, { size: 'half' }, { size: 'half' }, { size: 'half' }],
+          [{ size: 'half' }, { size: 'half' }, { size: 'half' }, { size: 'half' }, { size: 'full' }],
+          [{ size: 'full' }, { size: 'half' }, { size: 'half' }, { size: 'half' }, { size: 'half' }],
+        ],
+      };
+  }
+};
+
+export default function Gallery({ 
+  images: externalImages, 
+  layout, 
+  fetchFromApi = true,
+  columns = 4
+}: GalleryProps) {
   const [images, setImages] = useState<GalleryImage[]>(externalImages || []);
   const [loading, setLoading] = useState(fetchFromApi);
-
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
 
   useEffect(() => {
     // 如果需要從 API 獲取數據
@@ -105,11 +155,8 @@ export default function Gallery({ images: externalImages, fetchFromApi = false }
     }
   }, [fetchFromApi]);
 
-  // Randomly shuffle images only on client side after mount
-  const shuffledImages = useMemo(() => {
-    if (!isMounted) return images;
-    return [...images].sort(() => Math.random() - 0.5);
-  }, [images, isMounted]);
+  // Use provided layout or generate from columns prop
+  const galleryLayout = layout || getGalleryLayout(columns);
 
   if (loading) {
     return (
@@ -135,13 +182,63 @@ export default function Gallery({ images: externalImages, fetchFromApi = false }
     );
   }
 
+  let imageIndex = 0;
+
+  // Calculate how many times we need to repeat the layout pattern
+  const totalImagesInPattern = galleryLayout.columns.reduce(
+    (sum, column) => sum + column.length,
+    0
+  );
+  const timesToRepeat = Math.ceil(images.length / totalImagesInPattern);
+
+  // Create extended columns by repeating the pattern
+  const extendedColumns = Array.from({ length: timesToRepeat }, (_, repeatIndex) =>
+    galleryLayout.columns.map((column, columnIndex) => ({
+      column,
+      key: `${repeatIndex}-${columnIndex}`,
+    }))
+  ).flat();
+
   return (
     <section id="gallery">
       <div className="container w-full mx-auto px-4">
-        <div className="columns-1 gap-4 sm:columns-2 xl:columns-3 2xl:columns-4">
-          {shuffledImages.map((image, idx) => (
-            <GalleryItem key={image.id} image={image} index={idx} />
-          ))}
+        <div className="flex flex-wrap w-full">
+          {extendedColumns.map(({ column, key }) => {
+            const columnImages: { image: GalleryImage; size: 'full' | 'half' }[] = [];
+            
+            column.forEach((item) => {
+              if (imageIndex < images.length) {
+                columnImages.push({
+                  image: images[imageIndex],
+                  size: item.size,
+                });
+                imageIndex++;
+              }
+            });
+
+            // Skip rendering empty columns
+            if (columnImages.length === 0) {
+              return null;
+            }
+
+            return (
+              <div
+                key={key}
+                className="flex w-full md:w-1/2 flex-wrap"
+              >
+                {columnImages.map((item, itemIndex) => {
+                  const widthClass =
+                    item.size === 'full' ? 'w-full' : 'w-full md:w-1/2';
+                  
+                  return (
+                    <div key={itemIndex} className={`${widthClass} p-1`}>
+                      <GalleryItem image={item.image} />
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })}
         </div>
       </div>
     </section>

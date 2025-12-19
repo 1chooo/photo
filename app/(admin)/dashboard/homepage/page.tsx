@@ -322,7 +322,7 @@ export default function HomepagePhotosManagement() {
                                 onDrop={(e) => handleDrop(e, item.index)}
                                 className="relative group cursor-move h-full w-full"
                               >
-                                <div className="aspect-[3/2] relative overflow-hidden rounded-md">
+                                <div className="aspect-3/2 relative overflow-hidden rounded-md">
                                   <Image
                                     src={item.photo!.url}
                                     alt={item.photo!.alt || ''}
