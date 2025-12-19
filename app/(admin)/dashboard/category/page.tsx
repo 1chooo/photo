@@ -65,6 +65,13 @@ export default function CategoryManagementPage() {
   const [variantInput, setVariantInput] = useState<'original' | 'square'>('original');
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState<'uncategorized' | 'categorized'>('uncategorized');
+  
+  // Batch selection states
+  const [batchMode, setBatchMode] = useState(false);
+  const [selectedImages, setSelectedImages] = useState<Set<string>>(new Set());
+  const [batchSlugInput, setBatchSlugInput] = useState('');
+  const [batchSelectedSlug, setBatchSelectedSlug] = useState('');
+  const [batchVariantInput, setBatchVariantInput] = useState<'original' | 'square'>('original');
 
   // 獲取所有 telegram 圖片
   const { data: imagesData, isLoading: imagesLoading } = useSWR<{ images: UploadedImage[] }>(
@@ -227,6 +234,80 @@ export default function CategoryManagementPage() {
     }
   };
 
+  const handleBatchUpdate = async () => {
+    if (!user || selectedImages.size === 0) return;
+
+    const finalSlug = batchSlugInput.trim() || batchSelectedSlug;
+    
+    if (!finalSlug) {
+      alert('請選擇或輸入一個 slug');
+      return;
+    }
+
+    setSaving(true);
+
+    try {
+      const idToken = await user.getIdToken();
+      const response = await fetch('/api/telegram/category/batch', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${idToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          imageIds: Array.from(selectedImages),
+          slug: finalSlug,
+          variant: batchVariantInput,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to batch update slug');
+      }
+
+      await mutate('/api/telegram/images');
+      await mutate('/api/telegram/category');
+      
+      // Reset batch mode
+      setSelectedImages(new Set());
+      setBatchMode(false);
+      setBatchSlugInput('');
+      setBatchSelectedSlug('');
+      setBatchVariantInput('original');
+      
+      alert(`成功批量更新 ${selectedImages.size} 張圖片`);
+    } catch (error) {
+      console.error('Error batch updating slug:', error);
+      alert('批量更新分類失敗');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const toggleImageSelection = (imageId: string) => {
+    setSelectedImages(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(imageId)) {
+        newSet.delete(imageId);
+      } else {
+        newSet.add(imageId);
+      }
+      return newSet;
+    });
+  };
+
+  const selectAllImages = () => {
+    if (activeTab === 'uncategorized') {
+      setSelectedImages(new Set(uncategorizedImages.map(img => img.id)));
+    } else {
+      setSelectedImages(new Set(categorizedImages.map(img => img.id)));
+    }
+  };
+
+  const clearSelection = () => {
+    setSelectedImages(new Set());
+  };
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleString('zh-TW', {
@@ -241,9 +322,22 @@ export default function CategoryManagementPage() {
   const ImageCard = ({ image }: { image: UploadedImageWithCategory }) => {
     const isEditing = editingImageId === image.id;
     const isPinned = selectedPhotos.some(sp => sp.photoId === image.id);
+    const isSelected = selectedImages.has(image.id);
 
     return (
       <div className="group relative border border-rurikon-200 rounded-lg overflow-hidden hover:shadow-lg transition-shadow">
+        {/* Batch Selection Checkbox */}
+        {batchMode && (
+          <div className="absolute top-2 left-2 z-10">
+            <input
+              type="checkbox"
+              checked={isSelected}
+              onChange={() => toggleImageSelection(image.id)}
+              className="w-5 h-5 rounded border-gray-300 text-rurikon-600 focus:ring-rurikon-500 cursor-pointer"
+            />
+          </div>
+        )}
+        
         {/* Image */}
         <div className="relative aspect-square bg-rurikon-50">
           <Image
@@ -257,24 +351,26 @@ export default function CategoryManagementPage() {
 
         {/* Info and Actions */}
         <div className="p-4 space-y-3">
-          {/* Pin Button */}
-          <button
-            onClick={() => handlePinToHomepage(image.id)}
-            disabled={saving}
-            className={`w-full flex items-center justify-center gap-2 px-3 py-2 rounded-md transition-colors ${
-              isPinned
-                ? 'bg-rurikon-600 text-white hover:bg-rurikon-700'
-                : 'bg-rurikon-100 text-rurikon-700 hover:bg-rurikon-200'
-            }`}
-          >
-            <Pin className="h-4 w-4" />
-            <span className="text-sm font-medium">
-              {isPinned ? 'Pinned to Homepage' : 'Pin to Homepage'}
-            </span>
-          </button>
+          {/* Pin Button - hide in batch mode */}
+          {!batchMode && (
+            <button
+              onClick={() => handlePinToHomepage(image.id)}
+              disabled={saving}
+              className={`w-full flex items-center justify-center gap-2 px-3 py-2 rounded-md transition-colors ${
+                isPinned
+                  ? 'bg-rurikon-600 text-white hover:bg-rurikon-700'
+                  : 'bg-rurikon-100 text-rurikon-700 hover:bg-rurikon-200'
+              }`}
+            >
+              <Pin className="h-4 w-4" />
+              <span className="text-sm font-medium">
+                {isPinned ? 'Pinned to Homepage' : 'Pin to Homepage'}
+              </span>
+            </button>
+          )}
 
-          {/* Slug Editor */}
-          {isEditing ? (
+          {/* Slug Editor - hide in batch mode */}
+          {!batchMode && (isEditing ? (
             <div className="space-y-2">
               {/* Dropdown for existing slugs */}
               {existingSlugs.length > 0 && (
@@ -368,7 +464,7 @@ export default function CategoryManagementPage() {
                 {image.slug ? `${image.slug} (${image.variant || 'original'})` : '設定分類'}
               </span>
             </button>
-          )}
+          ))}
 
           {/* File Info */}
           <div className="text-xs text-gray-500 space-y-1">
@@ -416,29 +512,133 @@ export default function CategoryManagementPage() {
 
       {/* Tabs */}
       <div className="border-b border-rurikon-200 mb-6">
-        <div className="flex gap-4">
+        <div className="flex gap-4 justify-between items-center">
+          <div className="flex gap-4">
+            <button
+              onClick={() => setActiveTab('uncategorized')}
+              className={`px-4 py-2 font-medium border-b-2 transition-colors ${
+                activeTab === 'uncategorized'
+                  ? 'border-rurikon-600 text-rurikon-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              未分類 ({uncategorizedImages.length})
+            </button>
+            <button
+              onClick={() => setActiveTab('categorized')}
+              className={`px-4 py-2 font-medium border-b-2 transition-colors ${
+                activeTab === 'categorized'
+                  ? 'border-rurikon-600 text-rurikon-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              已分類 ({categorizedImages.length})
+            </button>
+          </div>
+          
+          {/* Batch Mode Toggle */}
           <button
-            onClick={() => setActiveTab('uncategorized')}
-            className={`px-4 py-2 font-medium border-b-2 transition-colors ${
-              activeTab === 'uncategorized'
-                ? 'border-rurikon-600 text-rurikon-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700'
+            onClick={() => {
+              setBatchMode(!batchMode);
+              if (batchMode) {
+                clearSelection();
+              }
+            }}
+            className={`px-4 py-2 rounded-md font-medium transition-colors ${
+              batchMode
+                ? 'bg-rurikon-600 text-white hover:bg-rurikon-700'
+                : 'bg-rurikon-100 text-rurikon-700 hover:bg-rurikon-200'
             }`}
           >
-            未分類 ({uncategorizedImages.length})
-          </button>
-          <button
-            onClick={() => setActiveTab('categorized')}
-            className={`px-4 py-2 font-medium border-b-2 transition-colors ${
-              activeTab === 'categorized'
-                ? 'border-rurikon-600 text-rurikon-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            已分類 ({categorizedImages.length})
+            {batchMode ? '退出批量模式' : '批量設定'}
           </button>
         </div>
       </div>
+
+      {/* Batch Action Panel */}
+      {batchMode && (
+        <div className="bg-rurikon-50 border border-rurikon-200 rounded-lg p-4 mb-6">
+          <div className="flex flex-col md:flex-row gap-4 items-end">
+            <div className="flex-1 space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="font-medium text-rurikon-700">
+                  批量操作 ({selectedImages.size} 張圖片已選擇)
+                </h3>
+                <div className="flex gap-2">
+                  <button
+                    onClick={selectAllImages}
+                    className="text-sm text-rurikon-600 hover:text-rurikon-700 underline"
+                  >
+                    全選
+                  </button>
+                  <span className="text-gray-400">|</span>
+                  <button
+                    onClick={clearSelection}
+                    className="text-sm text-rurikon-600 hover:text-rurikon-700 underline"
+                  >
+                    清除
+                  </button>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                {/* Existing slug dropdown */}
+                {existingSlugs.length > 0 && (
+                  <select
+                    value={batchSelectedSlug}
+                    onChange={(e) => {
+                      setBatchSelectedSlug(e.target.value);
+                      if (e.target.value) {
+                        setBatchSlugInput('');
+                      }
+                    }}
+                    className="px-3 py-2 border border-rurikon-300 rounded-md focus:outline-none focus:ring-2 focus:ring-rurikon-500 bg-white"
+                  >
+                    <option value="">-- 選擇現有 slug --</option>
+                    {existingSlugs.map((slug) => (
+                      <option key={slug} value={slug}>
+                        {slug}
+                      </option>
+                    ))}
+                  </select>
+                )}
+                
+                {/* New slug input */}
+                <input
+                  type="text"
+                  value={batchSlugInput}
+                  onChange={(e) => {
+                    setBatchSlugInput(e.target.value);
+                    if (e.target.value) {
+                      setBatchSelectedSlug('');
+                    }
+                  }}
+                  placeholder="或輸入新的 slug"
+                  className="px-3 py-2 border border-rurikon-300 rounded-md focus:outline-none focus:ring-2 focus:ring-rurikon-500"
+                />
+                
+                {/* Variant selector */}
+                <select
+                  value={batchVariantInput}
+                  onChange={(e) => setBatchVariantInput(e.target.value as 'original' | 'square')}
+                  className="px-3 py-2 border border-rurikon-300 rounded-md focus:outline-none focus:ring-2 focus:ring-rurikon-500 bg-white"
+                >
+                  <option value="original">Original (預設)</option>
+                  <option value="square">Square</option>
+                </select>
+              </div>
+            </div>
+            
+            <button
+              onClick={handleBatchUpdate}
+              disabled={saving || selectedImages.size === 0 || (!batchSlugInput.trim() && !batchSelectedSlug)}
+              className="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium whitespace-nowrap"
+            >
+              批量更新
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Content */}
       {activeTab === 'uncategorized' ? (

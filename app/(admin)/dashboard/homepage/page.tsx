@@ -224,11 +224,10 @@ export default function HomepagePhotosManagement() {
                   <button
                     key={cols}
                     onClick={() => setPreviewColumns(cols as 1 | 2 | 3 | 4)}
-                    className={`px-3 py-1 text-xs font-medium transition-colors ${
-                      previewColumns === cols
-                        ? 'bg-rurikon-600 text-white'
-                        : 'bg-white text-rurikon-600 hover:bg-rurikon-50'
-                    }`}
+                    className={`px-3 py-1 text-xs font-medium transition-colors ${previewColumns === cols
+                      ? 'bg-rurikon-600 text-white'
+                      : 'bg-white text-rurikon-600 hover:bg-rurikon-50'
+                      }`}
                     title={`Preview ${cols} column${cols > 1 ? 's' : ''}`}
                   >
                     {cols}
@@ -237,7 +236,7 @@ export default function HomepagePhotosManagement() {
               </div>
             </div>
           </div>
-          
+
           <p className="text-sm text-rurikon-400 mb-4 lowercase">
             Drag photos to reorder • Click × to remove
           </p>
@@ -268,7 +267,7 @@ export default function HomepagePhotosManagement() {
 
                   return extendedColumns.map(({ column, key }) => {
                     const columnImages: { photo: typeof selectedPhotoObjects[0]; size: 'full' | 'half'; index: number }[] = [];
-                    
+
                     column.forEach((item) => {
                       if (imageIndex < selectedPhotoObjects.length) {
                         columnImages.push({
@@ -291,10 +290,10 @@ export default function HomepagePhotosManagement() {
                       >
                         {columnImages.map((item) => {
                           const widthClass = item.size === 'full' ? 'w-full' : 'w-full md:w-1/2';
-                          
+
                           return (
-                            <div 
-                              key={`${item.photo!.slug}-${item.photo!.id}`} 
+                            <div
+                              key={`${item.photo!.slug}-${item.photo!.id}`}
                               className={`${widthClass} p-1`}
                             >
                               <div
@@ -373,7 +372,7 @@ export default function HomepagePhotosManagement() {
                       }}
                     />
                   </div>
-                  
+
                   <div className="absolute inset-0 bg-opacity-0 group-hover:bg-opacity-40 transition-all flex items-center justify-center cursor-pointer">
                     <button
                       onClick={() => handleAddPhoto(photo)}
