@@ -33,7 +33,7 @@ async function getEpisodePhotos(slug: string): Promise<EpisodeImageData[]> {
     // construct EpisodeImageData array
     return images.map((img: any, index: number) => ({
       id: img.id,
-      url: `/api/homepage/image/${img.id}`,
+      url: img.url,
       alt: img.alt || '',
       variant: img.variant || 'original',
       order: index,
