@@ -93,7 +93,7 @@ function LogoWithIcon({
       className='inline-flex items-center gap-1 whitespace-nowrap select-none text-black overflow-visible align-middle'
       title={title}
     >
-      {icon ? <span className='shrink-0 min-w-0 -ml-[1px]'>{icon}</span> : null}
+      {icon ? <span className='shrink-0 min-w-0 -ml-px'>{icon}</span> : null}
       <span
         className='text-[16px] tracking-[-0.005em] leading-none'
         style={{

@@ -26,7 +26,7 @@ interface HomepageImageItemProps {
 
 function GallerySkeleton() {
   return (
-    <section id="homepage-images-skeleton" className="animate-pulse">
+    <section id="homepage-images-skeleton" className="animate-pulse my-8">
       <div className="container">
         <div className="columns-2 md:columns-3 2xl:columns-4 gap-4 md:gap-6">
           {Array.from({ length: 10 }).map((_, idx) => (
@@ -107,7 +107,7 @@ export default function HomepageImages({
 
   if (images.length === 0) {
     return (
-      <section id="homepage-images">
+      <section id="homepage-images" className='my-8'>
         <div className="container">
           <div className="flex flex-col items-center justify-center min-h-[50vh] text-rurikon-400 bg-gray-50 rounded-lg">
              <div className="w-16 h-16 bg-gray-100 rounded-full mb-4 animate-pulse"></div>
@@ -119,7 +119,7 @@ export default function HomepageImages({
   }
 
   return (
-    <section id="homepage-images">
+    <section id="homepage-images" className='my-8'>
       <div className="container">
         <div className="columns-2 md:columns-3 2xl:columns-4 gap-4 md:gap-6">
           {images.map((img, idx) => (
