@@ -30,9 +30,7 @@ export async function generateStaticParams() {
   return articles
     .filter((name) => name.endsWith('.mdx'))
     .map((name) => ({
-      params: {
-        slug: name.replace(/\.mdx$/, ''),
-      },
+      slug: name.replace(/\.mdx$/, ''),
     }))
 }
 
