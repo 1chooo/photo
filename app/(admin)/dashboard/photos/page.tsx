@@ -11,7 +11,10 @@ import {
   Save, 
   GripVertical, 
   Loader2,
-  FolderOpen
+  FolderOpen,
+  CheckSquare,
+  Square,
+  X
 } from 'lucide-react';
 import Image from 'next/image';
 
@@ -62,6 +65,8 @@ export default function PhotosManagement() {
   const [selectedSlug, setSelectedSlug] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [draggedPhoto, setDraggedPhoto] = useState<string | null>(null);
+  const [selectedPhotos, setSelectedPhotos] = useState<Set<string>>(new Set());
+  const [isBatchMode, setIsBatchMode] = useState(false);
   
   // Edit states
   const [editingPhotoId, setEditingPhotoId] = useState<string | null>(null);
@@ -94,6 +99,74 @@ export default function PhotosManagement() {
       console.error('Error deleting photo:', error);
       alert('Delete failed');
     }
+  };
+
+  const handleBatchDelete = async () => {
+    if (selectedPhotos.size === 0) return;
+    if (!user) return;
+
+    const count = selectedPhotos.size;
+    if (!confirm(`Are you sure you want to delete ${count} photo${count > 1 ? 's' : ''}? They will be moved to the deleted-photos collection.`)) return;
+
+    setLoading(true);
+    try {
+      const idToken = await user.getIdToken();
+      const response = await fetch('/api/category/batch-delete', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${idToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          slug: selectedSlug,
+          photoIds: Array.from(selectedPhotos),
+        }),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        await mutate('/api/category');
+        setSelectedPhotos(new Set());
+        setIsBatchMode(false);
+        alert(result.message || 'Photos deleted successfully');
+      } else {
+        const error = await response.json();
+        alert(error.error || 'Batch delete failed');
+      }
+    } catch (error) {
+      console.error('Error batch deleting photos:', error);
+      alert('Batch delete failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const togglePhotoSelection = (photoId: string) => {
+    setSelectedPhotos(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(photoId)) {
+        newSet.delete(photoId);
+      } else {
+        newSet.add(photoId);
+      }
+      return newSet;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (!currentGallery) return;
+    if (selectedPhotos.size === currentGallery.images.length) {
+      setSelectedPhotos(new Set());
+    } else {
+      setSelectedPhotos(new Set(currentGallery.images.map(p => p.id)));
+    }
+  };
+
+  // Clear selection when changing galleries
+  const handleSelectGallery = (slug: string) => {
+    setSelectedSlug(slug);
+    setSelectedPhotos(new Set());
+    setIsBatchMode(false);
   };
 
   const handleUpdatePhoto = async (slug: string, photoId: string, url: string, alt: string, variant: 'original' | 'square') => {
@@ -293,7 +366,7 @@ export default function PhotosManagement() {
                   </div>
                 ) : (
                   <div 
-                    onClick={() => setSelectedSlug(gallery.slug)}
+                    onClick={() => handleSelectGallery(gallery.slug)}
                     className={`flex items-center justify-between p-3 rounded-lg cursor-pointer transition-all ${
                       selectedSlug === gallery.slug
                         ? 'bg-rurikon-50 text-rurikon-700 ring-1 ring-rurikon-200 shadow-sm'
@@ -344,10 +417,54 @@ export default function PhotosManagement() {
                       {currentGallery.slug}
                     </h2>
                     <p className="text-xs text-gray-500 mt-1">
-                      Drag and drop to reorder • {currentGallery.images.length} photos
+                      {isBatchMode && selectedPhotos.size > 0 
+                        ? `${selectedPhotos.size} of ${currentGallery.images.length} selected`
+                        : `Drag and drop to reorder • ${currentGallery.images.length} photos`
+                      }
                     </p>
                  </div>
-                 {/* Can add gallery-level actions here in future */}
+                 
+                 {/* Batch Actions */}
+                 <div className="flex items-center gap-2">
+                   {isBatchMode ? (
+                     <>
+                       <button
+                         onClick={toggleSelectAll}
+                         className="text-xs px-3 py-1.5 border border-rurikon-200 rounded-lg hover:bg-rurikon-50 text-rurikon-700 transition-colors flex items-center gap-1.5"
+                       >
+                         {selectedPhotos.size === currentGallery.images.length ? (
+                           <><CheckSquare className="w-3.5 h-3.5" /> Deselect All</>
+                         ) : (
+                           <><Square className="w-3.5 h-3.5" /> Select All</>
+                         )}
+                       </button>
+                       <button
+                         onClick={handleBatchDelete}
+                         disabled={selectedPhotos.size === 0 || loading}
+                         className="text-xs px-3 py-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-1.5"
+                       >
+                         <Trash2 className="w-3.5 h-3.5" />
+                         Delete {selectedPhotos.size > 0 && `(${selectedPhotos.size})`}
+                       </button>
+                       <button
+                         onClick={() => {
+                           setIsBatchMode(false);
+                           setSelectedPhotos(new Set());
+                         }}
+                         className="text-xs px-3 py-1.5 border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-600 transition-colors flex items-center gap-1.5"
+                       >
+                         <X className="w-3.5 h-3.5" /> Cancel
+                       </button>
+                     </>
+                   ) : (
+                     <button
+                       onClick={() => setIsBatchMode(true)}
+                       className="text-xs px-3 py-1.5 border border-rurikon-200 rounded-lg hover:bg-rurikon-50 text-rurikon-700 transition-colors flex items-center gap-1.5"
+                     >
+                       <CheckSquare className="w-3.5 h-3.5" /> Batch Select
+                     </button>
+                   )}
+                 </div>
               </div>
 
               {/* Grid Area */}
@@ -364,30 +481,54 @@ export default function PhotosManagement() {
                     {currentGallery.images.map((photo, index) => (
                       <div
                         key={photo.id}
-                        draggable
+                        draggable={!isBatchMode}
                         onDragStart={() => handleDragStart(photo.id)}
                         onDragOver={handleDragOver}
                         onDrop={(e) => handleDrop(e, photo.id, currentGallery.slug)}
+                        onClick={() => isBatchMode && togglePhotoSelection(photo.id)}
                         className={`group relative bg-white rounded-xl overflow-hidden border transition-all duration-200 hover:shadow-md ${
                           draggedPhoto === photo.id 
                             ? 'opacity-40 border-dashed border-rurikon-400 scale-95' 
+                            : selectedPhotos.has(photo.id)
+                            ? 'border-rurikon-500 ring-2 ring-rurikon-200 scale-[0.98]'
                             : 'border-rurikon-100 hover:border-rurikon-300'
-                        }`}
+                        } ${isBatchMode ? 'cursor-pointer' : ''}`}
                       >
                         {/* Image Container */}
-                        <div className="aspect-square relative bg-gray-100 group cursor-grab active:cursor-grabbing">
+                        <div className={`aspect-square relative bg-gray-100 group ${isBatchMode ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing'}`}>
+                           {/* Batch Mode Checkbox */}
+                           {isBatchMode && (
+                             <div className="absolute top-2 left-2 z-30">
+                               <div className={`w-6 h-6 rounded-md border-2 flex items-center justify-center transition-all ${
+                                 selectedPhotos.has(photo.id)
+                                   ? 'bg-rurikon-600 border-rurikon-600'
+                                   : 'bg-white/90 border-white backdrop-blur-sm'
+                               }`}>
+                                 {selectedPhotos.has(photo.id) && (
+                                   <CheckSquare className="w-4 h-4 text-white" />
+                                 )}
+                               </div>
+                             </div>
+                           )}
+                           
                            {/* Drag Handle Overlay */}
-                           <div className="absolute inset-0 z-10 opacity-0 group-hover:opacity-100 transition-opacity bg-linear-to-t from-black/40 via-transparent to-black/20 pointer-events-none" />
+                           <div className={`absolute inset-0 z-10 transition-opacity bg-linear-to-t from-black/40 via-transparent to-black/20 pointer-events-none ${
+                             isBatchMode ? 'opacity-0' : 'opacity-0 group-hover:opacity-100'
+                           }`} />
                            
                            {/* Order Badge */}
-                           <div className="absolute top-2 left-2 z-20 bg-black/50 backdrop-blur-sm text-white text-[10px] px-1.5 py-0.5 rounded font-mono shadow-sm">
-                              #{index + 1}
-                           </div>
+                           {!isBatchMode && (
+                             <div className="absolute top-2 left-2 z-20 bg-black/50 backdrop-blur-sm text-white text-[10px] px-1.5 py-0.5 rounded font-mono shadow-sm">
+                                #{index + 1}
+                             </div>
+                           )}
 
                            {/* Grip Icon */}
-                           <div className="absolute top-2 right-2 z-20 text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow-md">
-                              <GripVertical className="w-4 h-4" />
-                           </div>
+                           {!isBatchMode && (
+                             <div className="absolute top-2 right-2 z-20 text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow-md">
+                                <GripVertical className="w-4 h-4" />
+                             </div>
+                           )}
 
                            <Image
                             src={photo.url}
@@ -400,7 +541,7 @@ export default function PhotosManagement() {
                         </div>
 
                         {/* Content / Edit Form */}
-                        <div className="p-3">
+                        <div className="p-3" onClick={(e) => isBatchMode && e.stopPropagation()}>
                           {editingPhotoId === photo.id ? (
                             <div className="space-y-2 animate-in fade-in slide-in-from-bottom-2 duration-200">
                               <div className="space-y-1.5">

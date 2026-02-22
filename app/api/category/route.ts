@@ -223,7 +223,7 @@ export async function GET(req: NextRequest) {
   }
 }
 
-// DELETE: 刪除指定分類中的圖片
+// DELETE: 刪除指定分類中的圖片 (with soft delete pattern)
 export async function DELETE(req: NextRequest) {
   try {
     const user = await verifyAuth(req);
@@ -257,17 +257,49 @@ export async function DELETE(req: NextRequest) {
     }
 
     const images = doc.data()?.images || [];
+    const photoToDelete = images.find((img: any) => img.id === photoId);
+    
+    if (!photoToDelete) {
+      return NextResponse.json(
+        { error: "Photo not found in this category" },
+        { status: 404 }
+      );
+    }
+
     const updatedImages = images.filter((img: any) => img.id !== photoId);
 
+    // Use batch operation for atomic writes
+    const batch = db.batch();
+
+    // 1. Save deleted photo to 'deleted-photos' collection
+    const deletedPhotoData = {
+      id: photoToDelete.id,
+      url: photoToDelete.url,
+      file_name: photoToDelete.file_name,
+      alt: photoToDelete.alt,
+      variant: photoToDelete.variant || 'original',
+      uploaded_at: photoToDelete.uploaded_at,
+      original_slug: slug,
+      deleted_at: new Date().toISOString(),
+      deleted_by: user.email || user.uid,
+    };
+    
+    const deletedDocRef = db.collection('deleted-photos').doc(photoId);
+    batch.set(deletedDocRef, deletedPhotoData);
+
+    // 2. Update or delete the category
     if (updatedImages.length === 0) {
       // 如果沒有圖片了，刪除整個分類
-      await docRef.delete();
+      batch.delete(docRef);
     } else {
-      await docRef.update({
+      batch.update(docRef, {
         images: updatedImages,
         updatedAt: new Date().toISOString(),
       });
     }
+
+    // Commit all operations atomically
+    await batch.commit();
 
     return NextResponse.json(
       { success: true, message: "Photo deleted successfully" },
