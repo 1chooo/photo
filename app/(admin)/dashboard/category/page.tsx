@@ -78,19 +78,19 @@ export default function CategoryManagementPage() {
   const { data: imagesData, isLoading: imagesLoading } = useSWR<{ images: UploadedImage[] }>(
     user ? '/api/images' : null,
     fetcher,
-    { revalidateOnFocus: true }
+    { revalidateOnFocus: false, revalidateOnReconnect: false, refreshInterval: 0, dedupingInterval: 0 }
   );
 
   const { data: categoriesData } = useSWR<{ categories: CategoryInfo[] }>(
     user ? '/api/category' : null,
     fetcher,
-    { revalidateOnFocus: true }
+    { revalidateOnFocus: false, revalidateOnReconnect: false, refreshInterval: 0, dedupingInterval: 0 }
   );
 
   const { data: homepageData } = useSWR<{ selectedPhotos: SelectedPhoto[] }>(
     user ? '/api/homepage' : null,
     fetcher,
-    { revalidateOnFocus: true }
+    { revalidateOnFocus: false, revalidateOnReconnect: false, refreshInterval: 0, dedupingInterval: 0 }
   );
 
   const uploadedImages = imagesData?.images || [];

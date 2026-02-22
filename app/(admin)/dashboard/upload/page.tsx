@@ -56,8 +56,10 @@ export default function TelegramUploadPage() {
     user ? '/api/images' : null,
     fetcher,
     {
-      revalidateOnFocus: true,
-      refreshInterval: 30000, // refresh every 30 seconds
+      revalidateOnFocus: false,
+      revalidateOnReconnect: false,
+      refreshInterval: 0,
+      dedupingInterval: 0,
     }
   )
 
@@ -147,18 +149,6 @@ export default function TelegramUploadPage() {
             // 分類錯誤類型
             let errorType: FailedUpload['errorType'] = 'unknown'
             let errorMessage = data.error || 'Upload failed'
-
-            // 檢查是否為未設定 Telegram 設定
-            if (response.status === 400 && data.redirectTo === '/dashboard/settings') {
-              setError(errorMessage)
-              setUploading(false)
-              setUploadProgress(null)
-              // 導向設定頁面
-              setTimeout(() => {
-                window.location.href = '/dashboard/settings'
-              }, 3000)
-              return
-            }
 
             if (response.status === 400) {
               errorType = 'validation'
@@ -256,23 +246,30 @@ export default function TelegramUploadPage() {
   }
 
   const handleDelete = async (imageId: string) => {
-    if (!confirm('Sure to delete this image?')) return
+    if (!confirm('Are you sure you want to delete this image? It will be moved to trash.')) return
 
     try {
       const idToken = await user!.getIdToken()
-      const response = await fetch(`/api/images?id=${imageId}`, {
-        method: 'DELETE',
+      // 使用新的完整刪除 API
+      const response = await fetch('/api/photos/delete', {
+        method: 'POST',
         headers: {
           'Authorization': `Bearer ${idToken}`,
+          'Content-Type': 'application/json',
         },
+        body: JSON.stringify({
+          photoIds: [imageId],
+        }),
       })
 
       if (!response.ok) {
-        throw new Error('Failed to delete image')
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to delete image')
       }
 
+      const result = await response.json()
       await mutate('/api/images')
-      setSuccess('Image deleted successfully')
+      setSuccess(result.message || 'Image moved to trash successfully')
       setTimeout(() => setSuccess(null), 3000)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Invalid delete operation')

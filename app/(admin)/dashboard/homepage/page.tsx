@@ -90,13 +90,13 @@ export default function HomepagePhotosManagement() {
   const { data: imagesData } = useSWR(
     idToken ? ['/api/images', idToken] : null,
     ([url, token]) => fetcher(url, token),
-    { revalidateOnFocus: true }
+    { revalidateOnFocus: false, revalidateOnReconnect: false, refreshInterval: 0, dedupingInterval: 0 }
   );
 
   const { data: homepageData } = useSWR<{ selectedPhotos: SelectedPhoto[] }>(
     '/api/homepage',
     (url) => fetch(url).then((res) => res.json()),
-    { revalidateOnFocus: true }
+    { revalidateOnFocus: false, revalidateOnReconnect: false, refreshInterval: 0, dedupingInterval: 0 }
   );
 
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);

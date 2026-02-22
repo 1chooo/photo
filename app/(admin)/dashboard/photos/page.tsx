@@ -55,9 +55,10 @@ export default function PhotosManagement() {
     user ? '/api/category' : null,
     fetcher,
     {
-      revalidateOnFocus: true,
-      revalidateOnReconnect: true,
-      refreshInterval: 30000,
+      revalidateOnFocus: false,
+      revalidateOnReconnect: false,
+      refreshInterval: 0,
+      dedupingInterval: 0,
     }
   );
 
@@ -76,28 +77,39 @@ export default function PhotosManagement() {
   const [editingSlug, setEditingSlug] = useState<string | null>(null);
   const [newSlugName, setNewSlugName] = useState<string>('');
 
-  // --- Handlers (保持不變) ---
+  // --- Handlers ---
   const handleDeletePhoto = async (slug: string, photoId: string) => {
-    if (!confirm('Are you sure you want to delete this photo?')) return;
+    if (!confirm('Are you sure you want to delete this photo? It will be moved to trash.')) return;
     if (!user) return;
 
+    setLoading(true);
     try {
       const idToken = await user.getIdToken();
-      const response = await fetch(`/api/category?slug=${slug}&photoId=${photoId}`, {
-        method: 'DELETE',
+      // 使用新的完整刪除 API
+      const response = await fetch('/api/photos/delete', {
+        method: 'POST',
         headers: {
           'Authorization': `Bearer ${idToken}`,
+          'Content-Type': 'application/json',
         },
+        body: JSON.stringify({
+          photoIds: [photoId],
+        }),
       });
 
       if (response.ok) {
+        const result = await response.json();
         await mutate('/api/category');
+        alert(result.message || 'Photo moved to trash successfully');
       } else {
-        alert('Delete failed');
+        const error = await response.json();
+        alert(error.error || 'Delete failed');
       }
     } catch (error) {
       console.error('Error deleting photo:', error);
       alert('Delete failed');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -106,19 +118,19 @@ export default function PhotosManagement() {
     if (!user) return;
 
     const count = selectedPhotos.size;
-    if (!confirm(`Are you sure you want to delete ${count} photo${count > 1 ? 's' : ''}? They will be moved to the deleted-photos collection.`)) return;
+    if (!confirm(`Are you sure you want to delete ${count} photo${count > 1 ? 's' : ''}? They will be moved to trash.`)) return;
 
     setLoading(true);
     try {
       const idToken = await user.getIdToken();
-      const response = await fetch('/api/category/batch-delete', {
+      // 使用新的完整刪除 API
+      const response = await fetch('/api/photos/delete', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${idToken}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          slug: selectedSlug,
           photoIds: Array.from(selectedPhotos),
         }),
       });
@@ -128,7 +140,7 @@ export default function PhotosManagement() {
         await mutate('/api/category');
         setSelectedPhotos(new Set());
         setIsBatchMode(false);
-        alert(result.message || 'Photos deleted successfully');
+        alert(result.message || 'Photos moved to trash successfully');
       } else {
         const error = await response.json();
         alert(error.error || 'Batch delete failed');

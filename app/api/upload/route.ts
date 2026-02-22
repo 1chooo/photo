@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuth } from "firebase-admin/auth";
 import { getAdminApp, getAdminDb } from "@/lib/firebase/admin";
-import { UserSettings, TelegramChat } from "@/types/settings";
 
 // 驗證 Firebase ID Token 並返回用戶 ID
 async function verifyAuth(req: NextRequest): Promise<string | null> {
@@ -24,39 +23,6 @@ async function verifyAuth(req: NextRequest): Promise<string | null> {
   }
 }
 
-// 獲取用戶的 Telegram 設定
-async function getUserSettings(userId: string): Promise<UserSettings | null> {
-  try {
-    const db = getAdminDb();
-    const settingsDoc = await db.collection('userSettings').doc(userId).get();
-    
-    if (!settingsDoc.exists) {
-      return null;
-    }
-    
-    return settingsDoc.data() as UserSettings;
-  } catch (error) {
-    console.error("Failed to fetch user settings:", error);
-    return null;
-  }
-}
-
-// 獲取用戶的預設 Telegram Chat（或指定的 Chat）
-function getDefaultChat(settings: UserSettings | null, chatId?: string): TelegramChat | null {
-  if (!settings) return null;
-  
-  // 支援新的多 chat 格式
-  if (settings.telegramChats && settings.telegramChats.length > 0) {
-    if (chatId) {
-      return settings.telegramChats.find(chat => chat.id === chatId) || null;
-    }
-    // 返回預設 chat 或第一個 chat
-    return settings.telegramChats.find(chat => chat.isDefault) || settings.telegramChats[0];
-  }
-  
-  return null;
-}
-
 export async function POST(req: NextRequest) {
   try {
     // 驗證用戶身份
@@ -68,27 +34,18 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 獲取用戶的 Telegram 設定
-    const userSettings = await getUserSettings(userId);
-    
-    // 從 query string 獲取指定的 chat ID（可選）
-    const url = new URL(req.url);
-    const chatId = url.searchParams.get('chatId') || undefined;
-    
-    const chat = getDefaultChat(userSettings, chatId);
-    
-    if (!chat) {
+    // 從環境變數讀取 Telegram 設定
+    const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+    const CHAT_ID = process.env.TELEGRAM_CHAT_ID;
+
+    if (!BOT_TOKEN || !CHAT_ID) {
       return NextResponse.json(
         { 
-          error: "請先在 Settings 頁面設定您的 Telegram Chat",
-          redirectTo: "/dashboard/settings"
+          error: "Telegram configuration is missing. Please set TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID environment variables."
         },
-        { status: 400 }
+        { status: 500 }
       );
     }
-
-    const BOT_TOKEN = chat.botToken;
-    const CHAT_ID = chat.chatId;
 
     // 1. Parse the incoming form data
     const formData = await req.formData();

@@ -101,10 +101,15 @@ export async function POST(req: NextRequest) {
     // Use batch operation for atomic writes
     const batch = db.batch();
 
-    // 1. Save deleted photos to 'deleted-photos' collection
+    // 1. Save deleted photos to 'deleted-photos' collection（過濾掉 undefined 值）
     for (const deletedPhoto of photosToDelete) {
+      // 過濾掉 undefined 值以避免 Firestore 錯誤
+      const cleanedData = Object.fromEntries(
+        Object.entries(deletedPhoto).filter(([_, value]) => value !== undefined)
+      );
+      
       const deletedDocRef = db.collection('deleted-photos').doc(deletedPhoto.id);
-      batch.set(deletedDocRef, deletedPhoto);
+      batch.set(deletedDocRef, cleanedData);
     }
 
     // 2. Update or delete the category

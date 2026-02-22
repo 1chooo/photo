@@ -45,8 +45,10 @@ export default function DashboardPage() {
     idToken ? ['/api/images', idToken] : null,
     ([url, token]) => fetcher(url, token),
     {
-      refreshInterval: 30000,
-      revalidateOnFocus: true,
+      refreshInterval: 0,
+      revalidateOnFocus: false,
+      revalidateOnReconnect: false,
+      dedupingInterval: 0,
     }
   )
 
@@ -55,8 +57,10 @@ export default function DashboardPage() {
     idToken ? ['/api/category', idToken] : null,
     ([url, token]) => fetcher(url, token),
     {
-      refreshInterval: 30000,
-      revalidateOnFocus: true,
+      refreshInterval: 0,
+      revalidateOnFocus: false,
+      revalidateOnReconnect: false,
+      dedupingInterval: 0,
     }
   )
 
@@ -65,8 +69,10 @@ export default function DashboardPage() {
     '/api/homepage',
     (url) => fetcher(url),
     {
-      refreshInterval: 30000,
-      revalidateOnFocus: true,
+      refreshInterval: 0,
+      revalidateOnFocus: false,
+      revalidateOnReconnect: false,
+      dedupingInterval: 0,
     }
   )
 

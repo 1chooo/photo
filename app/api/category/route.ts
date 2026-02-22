@@ -271,7 +271,7 @@ export async function DELETE(req: NextRequest) {
     // Use batch operation for atomic writes
     const batch = db.batch();
 
-    // 1. Save deleted photo to 'deleted-photos' collection
+    // 1. Save deleted photo to 'deleted-photos' collection（過濾掉 undefined 值）
     const deletedPhotoData = {
       id: photoToDelete.id,
       url: photoToDelete.url,
@@ -284,8 +284,13 @@ export async function DELETE(req: NextRequest) {
       deleted_by: user.email || user.uid,
     };
     
+    // 過濾掉 undefined 值以避免 Firestore 錯誤
+    const cleanedData = Object.fromEntries(
+      Object.entries(deletedPhotoData).filter(([_, value]) => value !== undefined)
+    );
+    
     const deletedDocRef = db.collection('deleted-photos').doc(photoId);
-    batch.set(deletedDocRef, deletedPhotoData);
+    batch.set(deletedDocRef, cleanedData);
 
     // 2. Update or delete the category
     if (updatedImages.length === 0) {

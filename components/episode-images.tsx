@@ -15,19 +15,27 @@ interface EpisodeImagesProps {
 
 async function getEpisodePhotos(slug: string): Promise<EpisodeImageData[]> {
   try {
-    const { getAdminDb } = await import('@/lib/firebase/admin');
-    const db = getAdminDb();
+    // Construct URL for both client and server
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL 
+      || process.env.VERCEL_URL 
+      || 'http://localhost:3000';
     
-    // fetch category document by slug
-    const docRef = db.collection('telegram-categories').doc(slug);
-    const doc = await docRef.get();
+    const url = `${baseUrl}/api/category/${slug}`;
     
-    if (!doc.exists) {
-      console.log(`Category "${slug}" not found`);
-      return [];
+    const response = await fetch(url, {
+      cache: 'no-store', // Always fetch fresh data
+    });
+
+    if (!response.ok) {
+      if (response.status === 404) {
+        console.log(`Category "${slug}" not found`);
+        return [];
+      }
+      console.error(`API request failed: ${response.status} ${response.statusText}`);
+      throw new Error(`Failed to fetch category: ${response.statusText}`);
     }
-    
-    const data = doc.data();
+
+    const data = await response.json();
     const images = data?.images || [];
     
     // construct EpisodeImageData array
