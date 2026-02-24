@@ -28,7 +28,7 @@ function GallerySkeleton() {
   return (
     <section id="homepage-images-skeleton" className="animate-pulse my-8">
       <div className="container">
-        <div className="columns-2 md:columns-3 2xl:columns-4 gap-4 md:gap-6">
+        <div className="columns-2 md:columns-3 2xl:columns-4 gap-4 md:gap-6 [column-fill:auto]">
           {Array.from({ length: 10 }).map((_, idx) => (
             <div
               key={idx}
@@ -121,7 +121,7 @@ export default function HomepageImages({
   return (
     <section id="homepage-images" className='my-8'>
       <div className="container">
-        <div className="columns-2 md:columns-3 2xl:columns-4 gap-4 md:gap-6">
+        <div className="columns-2 md:columns-3 2xl:columns-4 gap-4 md:gap-6 [column-fill:auto]">
           {images.map((img, idx) => (
             <MasonryItem key={img.id ?? idx} image={img} isPriority={idx < 4} />
           ))}
