@@ -100,13 +100,12 @@ function GallerySkeleton({ layout = 'column' }: { layout?: 'column' | 'row' }) {
 
 function MasonryItem({ image, isPriority = false }: HomepageImageItemProps & { isPriority?: boolean }) {
   const [isLoaded, setIsLoaded] = useState(false);
-  const proxySrc = image.id ? `/api/homepage/image/${image.id}` : image.src;
 
   return (
     <div className="mb-4 break-inside-avoid overflow-hidden bg-gray-50">
       <Image
         alt={image.alt}
-        src={proxySrc}
+        src={image.src}
         width={image.width || 800}
         height={image.height || 450}
         className={`w-full h-auto object-cover transition duration-700 ${
@@ -175,14 +174,13 @@ function RowLayout({ images }: { images: GalleryImage[] }) {
           }}
         >
           {row.photos.map((photo, photoIndex) => {
-            const proxySrc = photo.id ? `/api/homepage/image/${photo.id}` : photo.src;
             const width = row.height * ((photo.width || 800) / (photo.height || 450));
             const globalIndex = photo.originalIndex;
 
             return (
               <RowImageItem
                 key={photo.id ?? photoIndex}
-                src={proxySrc}
+                src={photo.src}
                 alt={photo.alt}
                 width={width}
                 height={row.height}
