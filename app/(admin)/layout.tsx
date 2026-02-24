@@ -6,7 +6,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { signOut } from 'firebase/auth'
 import { auth } from '@/lib/firebase/config'
 import { useAuth } from '@/lib/firebase/useAuth'
-import DashboardNavbar from '@/components/dashboard-navbar'
+import DashboardNavbar from '@/components/layout/dashboard-navbar'
 
 export default function AdminLayout({
   children,

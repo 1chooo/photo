@@ -1,7 +1,7 @@
 import { ViewTransition } from 'react'
 import { Analytics } from '@vercel/analytics/next'
 
-import Navbar from '@/components/navbar'
+import Navbar from '@/components/layout/navbar'
 
 export default function HomeLayout({
   children,
