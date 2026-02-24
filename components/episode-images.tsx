@@ -18,7 +18,7 @@ interface EpisodeImagesProps {
 
 function EpisodeImagesSkeleton() {
   return (
-    <div className="animate-pulse space-y-4">
+    <div className="animate-pulse space-y-4 py-8">
       {Array.from({ length: 3 }).map((_, idx) => (
         <div key={idx} className="bg-gray-100 aspect-video w-full rounded" />
       ))}

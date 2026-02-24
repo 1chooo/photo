@@ -4,7 +4,7 @@ import { codeToHtml, createCssVariablesTheme } from 'shiki'
 import Link from 'next/link'
 import Image from 'next/image'
 import HomepageImages from '@/components/homepage-images'
-import GalleryPhotos from '@/components/episode-images';
+import EpisodeImages from '@/components/episode-images';
 
 // @ts-ignore
 import { InlineMath, BlockMath } from 'react-katex'
@@ -157,7 +157,7 @@ export const components: Record<
   InlineMath,
   BlockMath,
   HomepageImages,
-  GalleryPhotos,
+  EpisodeImages,
 }
 
 export function useMDXComponents(inherited: MDXComponents): MDXComponents {
