@@ -52,6 +52,7 @@ export default function DashboardNavbar({ user, handleSignOut }: DashboardNavbar
         <Item href='/dashboard/photos'>Photo</Item>
         <Item href='/dashboard/homepage'>Homepage</Item>
         <Item href='/dashboard/upload'>Upload</Item>
+        <Item href='/dashboard/compress'>Compress</Item>
         <Item href='/dashboard/category'>Category</Item>
       </ul>
       <div className='hidden mobile:block mobile:sticky bottom-6 sm:bottom-10 md:bottom-14 pt-6 border-t border-rurikon-100 text-right'>

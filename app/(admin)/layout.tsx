@@ -7,6 +7,7 @@ import { signOut } from 'firebase/auth'
 import { auth } from '@/lib/firebase/config'
 import { useAuth } from '@/lib/firebase/useAuth'
 import DashboardNavbar from '@/components/layout/dashboard-navbar'
+import { Toaster } from '@/components/ui/sonner'
 
 export default function AdminLayout({
   children,
@@ -73,6 +74,7 @@ export default function AdminLayout({
           </ViewTransition>
         </main>
       </div>
+      <Toaster />
     </>
   )
 }
